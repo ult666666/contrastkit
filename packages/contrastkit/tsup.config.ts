@@ -13,4 +13,12 @@ export default defineConfig([
     sourcemap: true,
     target: 'es2022',
   },
+  {
+    // The CLI: one self-contained ESM file for Node. tsup keeps the hashbang from
+    // src/cli/main.ts and marks the output as executable.
+    entry: { cli: 'src/cli/main.ts' },
+    format: ['esm'],
+    platform: 'node',
+    target: 'node20',
+  },
 ]);
