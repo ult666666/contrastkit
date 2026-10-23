@@ -27,7 +27,7 @@ export default defineConfig(
 
   {
     // Plain JavaScript config files are not part of any tsconfig project.
-    files: ['**/*.js'],
+    files: ['**/*.{js,mjs,cjs}'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.node },
   },
