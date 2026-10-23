@@ -31,3 +31,19 @@ export {
   quantizeRgb,
 } from './gamut';
 export { deltaEOK } from './difference';
+export {
+  MAX_CONTRAST_RATIO,
+  WCAG_MINIMUMS,
+  checkContrast,
+  checkRatio,
+  composite,
+  contrastRatio,
+  meetsWcag,
+  relativeLuminance,
+  requiredRatio,
+  type ContrastChecks,
+  type ContrastResult,
+  type ContrastUse,
+  type WcagLevel,
+} from './contrast';
+export { suggestFix, type FixCandidate, type FixOptions, type FixResult } from './fix';
