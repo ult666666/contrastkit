@@ -1,0 +1,64 @@
+{
+  "name": "contrastkit",
+  "version": "0.1.0",
+  "description": "Accessible color, measured: WCAG 2.2 contrast checks, perceptual (OKLCH) fixes for failing pairs, color-vision-deficiency simulation and palette audits.",
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "wcag",
+    "contrast",
+    "color",
+    "oklch",
+    "oklab",
+    "color-blindness",
+    "design-tokens",
+    "cli"
+  ],
+  "homepage": "https://github.com/ult666666/contrastkit#readme",
+  "bugs": "https://github.com/ult666666/contrastkit/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ult666666/contrastkit.git",
+    "directory": "packages/contrastkit"
+  },
+  "license": "MIT",
+  "author": "Charles Dai",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "contrastkit": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "tsup",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "fast-check": "^4.10.2",
+    "tsup": "^8.5.1"
+  }
+}
