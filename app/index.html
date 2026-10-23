@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Check WCAG 2.2 contrast for every pair in a palette, apply perceptual OKLCH fixes and simulate color vision deficiencies."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Palette Auditor · contrastkit</title>
+    <script>
+      // Apply a saved theme before first paint so the page never flashes the wrong one.
+      try {
+        const theme = localStorage.getItem('contrastkit-theme');
+        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+      } catch {
+        // Storage unavailable: follow the system theme.
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <p>Palette Auditor needs JavaScript. The contrastkit CLI works without a browser.</p>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
