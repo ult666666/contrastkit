@@ -36,5 +36,5 @@ jobs:
         run: npm run build
       - name: Smoke-test the built CLI and library
         run: |
-          node packages/contrastkit/dist/cli.js audit examples/tokens.json
+          npx contrastkit audit examples/tokens.json
           node examples/library.mjs

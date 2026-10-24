@@ -42,10 +42,11 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "contrastkit": "./dist/cli.js"
+    "contrastkit": "./bin/contrastkit.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "engines": {
     "node": ">=20"
