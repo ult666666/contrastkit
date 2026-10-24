@@ -42,7 +42,14 @@ design-token change can fail CI the way a broken test does.
 
 ## Quick start
 
-contrastkit is not published to npm yet; build it from source (Node 20 or newer):
+contrastkit is not published to npm. Install the library and the `contrastkit` CLI from the GitHub release (Node 20 or newer):
+
+```sh
+npm install https://github.com/ult666666/contrastkit/releases/download/v0.1.0/contrastkit-0.1.0.tgz
+npx contrastkit check 777 fff
+```
+
+Each release also attaches a SHA-256 checksum. Or build it from source:
 
 ```sh
 git clone https://github.com/ult666666/contrastkit.git
