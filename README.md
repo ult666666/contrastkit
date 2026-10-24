@@ -300,8 +300,7 @@ releases that still support Node 20; the reasons are in
 - **sRGB only:** no Display P3. `oklch()` inputs outside sRGB are gamut-mapped.
 - **Not supported:** translucent backgrounds; translucent palette colors in audits;
   `lab()`, `lch()`, `hwb()`, `color()`, `none` and relative color syntax.
-- **Not yet done:** publishing to npm, and running the CI and Pages workflows on GitHub
-  (they have not run yet).
+- **Not yet done:** publishing to npm.
 - **Roadmap:** anomalous trichromacy (Machado's other severities), Display P3, GitHub
   annotations or SARIF output for `audit`, and importers for Style Dictionary and Tokens
   Studio files.
