@@ -17,6 +17,7 @@ import {
   type Simulation,
 } from './state';
 import { useTheme, type Theme } from './theme';
+import { downloadTokens, prepareTokens, TOKENS_FILENAME } from './tokens-export';
 import { decodeHash, encodeHash } from './url-state';
 
 const BROKEN_LINK_NOTICE =
@@ -77,6 +78,8 @@ export function App() {
   const colorById = (id: string): PaletteColor => byId.get(id) ?? fallbackColor(colors);
   const foreground = colorById(state.foregroundId);
   const background = colorById(state.backgroundId);
+  const target = findTarget(state.targetId);
+  const tokenExport = prepareTokens(colors, foreground, background, target);
   const confusions =
     simulation === 'none'
       ? audit.cvdConfusions
@@ -118,6 +121,18 @@ export function App() {
       announce('Link copied. It reopens this palette, pair and simulation.');
     } catch {
       announce('Could not copy automatically. Copy the address bar instead; it holds the link.');
+    }
+  };
+
+  const exportTokens = (): void => {
+    if (tokenExport.status === 'invalid') return;
+    try {
+      downloadTokens(tokenExport.json);
+      announce(
+        `Downloaded ${TOKENS_FILENAME}. It contains actual colors and the selected pair and target.`,
+      );
+    } catch {
+      announce('Could not download tokens. Try Download tokens JSON again.');
     }
   };
 
@@ -173,6 +188,8 @@ export function App() {
           <div className="column">
             <PaletteEditor
               colors={colors}
+              exportProblem={tokenExport.status === 'invalid' ? tokenExport.message : undefined}
+              onExport={exportTokens}
               shownHex={(id) => shown(colorById(id).hex)}
               onAdd={addColor}
               onRemove={removeColor}
@@ -214,7 +231,7 @@ export function App() {
               background={background}
               shown={shown}
               simulationLabel={simulation === 'none' ? undefined : SIMULATION_LABELS[simulation]}
-              target={findTarget(state.targetId)}
+              target={target}
               onTargetChange={(targetId) => {
                 dispatch({ type: 'target', targetId });
               }}
