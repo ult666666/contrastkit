@@ -37,7 +37,7 @@ design-token change can fail CI the way a broken test does.
   CSS Color 4 gamut mapping.
 - **CLI** with `check`, `fix` and `audit`, `--json` output and CI-friendly exit codes.
 - **Palette Auditor web app:** keyboard-operable, screen-reader-friendly, light/dark, with
-  state shareable through the URL.
+  state shareable through the URL and downloadable tokens JSON for CLI audits.
 - Zero runtime dependencies, ESM + CommonJS + type declarations, strict TypeScript.
 
 ## Quick start
@@ -229,6 +229,35 @@ jobs:
 This repository's own [CI](.github/workflows/ci.yml) runs the same audit on the example
 file.
 
+## From the web palette to CI
+
+In the [Palette Auditor](https://ult666666.github.io/contrastkit/), **Download tokens
+JSON** saves `contrastkit-tokens.json`. It includes all actual palette colors and one
+explicit requirement for the selected foreground/background pair, including its target
+level and use. Color-vision simulation affects the preview; exported colors stay the
+actual palette values.
+
+A reproducible repair workflow:
+
+1. Open the default palette. **Slate on Mist** fails AA normal text at 4.20:1.
+2. Select **Download tokens JSON** and save it as `tokens-before.json` in your source checkout.
+3. Select **Apply suggested fix: change Slate to #5d6977**. The pair now passes at 4.51:1.
+4. Download again and save it as `tokens-after.json`.
+5. After `npm ci && npm run build`, audit each downloaded file with the real CLI:
+
+```sh
+node packages/contrastkit/dist/cli.js audit tokens-before.json --json
+# exit 1: the declared Slate/Mist pair fails
+node packages/contrastkit/dist/cli.js audit tokens-after.json --json
+# exit 0: the same declared pair passes
+```
+
+Empty or duplicate names disable the download with a visible, screen-reader-announced
+explanation. Names are trimmed and duplicates are compared without case. A name starting
+with `$` must be changed because the CLI reserves those keys for token metadata. Dotted
+names work as token names. Other editor features remain available while names are being
+corrected.
+
 ## How it works
 
 ```mermaid
@@ -256,7 +285,7 @@ decisions and the trade-offs in depth.
 
 ## Correctness
 
-- **298 tests**: 247 for the library and CLI and 51 for the web app. Library coverage is
+- **309 tests**: 247 for the library and CLI and 62 for the web app. Library coverage is
   99.68% of statements and 98.76% of branches, with a 90% threshold enforced.
 - **Hand-checked values:** black on white is exactly 21:1, #777777 on white 4.478:1 (fails
   AA), #767676 4.542:1 and #595959 7.005:1.
@@ -269,6 +298,11 @@ decisions and the trade-offs in depth.
   run of the production build (light and dark themes). The real-browser run excludes only
   the preview sample, which shows your colors at their real contrast on purpose. A test
   audits the app's own theme colors with contrastkit.
+- **Downloaded tokens through the real CLI:** app tests capture the actual JSON Blob at
+  the browser download boundary, write it to disk and run the built executable. They
+  verify fail → fix → pass, all five targets, all three CVD views, name validation and
+  recovery, unusual token names and browser download failure. The app test command
+  builds the CLI first, so these checks run in the existing CI suite from a fresh checkout.
 
 ## Development
 

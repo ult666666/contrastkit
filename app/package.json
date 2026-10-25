@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "pretest": "npm run build --workspace contrastkit",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json"

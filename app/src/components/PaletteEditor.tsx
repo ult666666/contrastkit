@@ -4,6 +4,8 @@ import { ColorRow } from './ColorRow';
 interface PaletteEditorProps {
   readonly colors: readonly PaletteColor[];
   readonly shownHex: (id: string) => string;
+  readonly exportProblem: string | undefined;
+  readonly onExport: () => void;
   readonly onAdd: () => void;
   readonly onRemove: (id: string) => void;
   readonly onRename: (id: string, name: string) => void;
@@ -13,6 +15,8 @@ interface PaletteEditorProps {
 export function PaletteEditor({
   colors,
   shownHex,
+  exportProblem,
+  onExport,
   onAdd,
   onRemove,
   onRename,
@@ -48,6 +52,14 @@ export function PaletteEditor({
         <button type="button" id="add-color" disabled={!canAdd} onClick={onAdd}>
           Add color
         </button>
+        <button
+          type="button"
+          disabled={exportProblem !== undefined}
+          aria-describedby="tokens-export-hint"
+          onClick={onExport}
+        >
+          Download tokens JSON
+        </button>
         <p className="field-hint" id="palette-limits">
           {canAdd
             ? `${colors.length} of ${MAX_COLORS} colors.`
@@ -55,6 +67,10 @@ export function PaletteEditor({
           {!canRemove && `A palette needs at least ${MIN_COLORS} colors.`}
         </p>
       </div>
+      <p className="field-hint" id="tokens-export-hint" aria-live="polite">
+        {exportProblem ??
+          'Downloads actual colors and the selected pair and target for CLI audits.'}
+      </p>
     </section>
   );
 }
