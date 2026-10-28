@@ -19,6 +19,6 @@ export default defineConfig([
     entry: { cli: 'src/cli/main.ts' },
     format: ['esm'],
     platform: 'node',
-    target: 'node20',
+    target: 'node22',
   },
 ]);

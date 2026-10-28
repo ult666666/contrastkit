@@ -42,7 +42,7 @@ design-token change can fail CI the way a broken test does.
 
 ## Quick start
 
-contrastkit is not published to npm. Install the library and the `contrastkit` CLI from the GitHub release (Node 20 or newer):
+contrastkit is not published to npm. Install the library and the `contrastkit` CLI from the GitHub release (Node 22 or newer):
 
 ```sh
 npm install https://github.com/ult666666/contrastkit/releases/download/v0.1.0/contrastkit-0.1.0.tgz
@@ -292,7 +292,8 @@ decisions and the trade-offs in depth.
 - **Property tests** (fast-check): conversion round trips; gamut mapping always in gamut;
   every fix meets its target as a hex code; `unachievable` exactly when neither black nor
   white passes; CVD keeps grays and collapses confusion lines.
-- **Cross-checked against Chromium 152's CSS engine:** all 148 named colors match;
+- **Cross-checked against Chromium 152's CSS engine** (once, during development; ten of its
+  values are kept as test fixtures): all 148 named colors match;
   OKLCH values agree within 4.4e-5; OKLCH → sRGB matches exactly on every sample.
 - **Accessibility:** axe-core finds no violations in the jsdom tests or in a real-browser
   run of the production build (light and dark themes). The real-browser run excludes only
@@ -319,8 +320,8 @@ decisions and the trade-offs in depth.
 
 The repository is an npm workspace: `packages/contrastkit` (library and CLI) and `app`
 (web app). GitHub Pages deployment runs from `.github/workflows/pages.yml` once Pages is set
-to "GitHub Actions" in the repository settings. Toolchain versions are pinned to the newest
-releases that still support Node 20; the reasons are in
+to "GitHub Actions" in the repository settings. Development needs Node 22.18 or newer. Two
+toolchain packages stay below their latest major; the reasons are in
 [docs/DESIGN.md](docs/DESIGN.md#11-toolchain-notes).
 
 ## Limitations and roadmap
