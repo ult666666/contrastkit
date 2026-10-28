@@ -11,7 +11,7 @@
     "app"
   ],
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.18"
   },
   "scripts": {
     "build": "npm run build --workspaces",

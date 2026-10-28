@@ -309,24 +309,25 @@ An accessibility tool has to be accessible itself.
 
 ## 11. Toolchain notes
 
-The brief asked for current stable versions with CI on Node 20, 22 and 24. In October 2026
-several latest majors no longer support Node 20 (which reached end-of-life in April 2026),
-so the newest versions that do were pinned:
+CI runs on Node 22 and 24. Node 20 reached end-of-life in April 2026, so it is no longer
+supported. The published package needs Node 22 or newer. Development needs Node 22.18 or
+newer, the floor of tsup 9.
 
-| Package                   | Used  | Latest seen | Reason                                            |
-| ------------------------- | ----- | ----------- | ------------------------------------------------- |
-| typescript                | 6.0.x | 7.0         | typescript-eslint 8.72 supports TypeScript < 6.1  |
-| eslint, @eslint/js        | 9.39  | 10.x        | eslint-plugin-jsx-a11y 6.10.2 supports ESLint ≤ 9 |
-| vitest, coverage-v8       | 4.1   | 5.0         | Vitest 5 requires Node ≥ 22.12                    |
-| tsup                      | 8.5   | 9.0         | tsup 9 requires Node ≥ 22.18                      |
-| jsdom                     | 29.1  | 30.1        | jsdom 30 requires Node ≥ 22.22                    |
-| @testing-library/jest-dom | 6.9   | 7.0         | 6.10+ requires Node ≥ 22                          |
+Two toolchain packages stay below their latest major:
+
+| Package            | Used  | Latest seen | Reason                                            |
+| ------------------ | ----- | ----------- | ------------------------------------------------- |
+| typescript         | 6.0.x | 7.0         | typescript-eslint 8.72 supports TypeScript < 6.1  |
+| eslint, @eslint/js | 9.39  | 10.x        | eslint-plugin-jsx-a11y 6.10.2 supports ESLint ≤ 9 |
 
 npm reports ESLint 9 as no longer supported, so moving to ESLint 10 is the first upgrade
-once jsx-a11y supports it. tsup 8 passes `baseUrl` to its declaration build, which
-TypeScript 6 deprecates, so `tsup.config.ts` sets `ignoreDeprecations: "6.0"` for that
-build only. npm 11 skips the install scripts of esbuild and fsevents unless approved; they
-are not needed (esbuild ships its binary as an optional dependency).
+once jsx-a11y supports it. Vitest 5, jsdom 30 and @testing-library/jest-dom 7 were held back
+only while Node 20 was supported; they can now follow the regular dependency updates.
+
+tsup 8 passes `baseUrl` to its declaration build, which TypeScript 6 deprecates, so
+`tsup.config.ts` sets `ignoreDeprecations: "6.0"` for that build only. npm 11 skips the
+install scripts of esbuild and fsevents unless approved; they are not needed (esbuild ships
+its binary as an optional dependency).
 
 ## References
 
