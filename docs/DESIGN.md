@@ -324,10 +324,8 @@ npm reports ESLint 9 as no longer supported, so moving to ESLint 10 is the first
 once jsx-a11y supports it. Vitest 5, jsdom 30 and @testing-library/jest-dom 7 were held back
 only while Node 20 was supported; they can now follow the regular dependency updates.
 
-tsup 8 passes `baseUrl` to its declaration build, which TypeScript 6 deprecates, so
-`tsup.config.ts` sets `ignoreDeprecations: "6.0"` for that build only. npm 11 skips the
-install scripts of esbuild and fsevents unless approved; they are not needed (esbuild ships
-its binary as an optional dependency).
+npm 11 skips the install scripts of esbuild and fsevents unless approved; they are not needed
+(esbuild ships its binary as an optional dependency).
 
 ## References
 
