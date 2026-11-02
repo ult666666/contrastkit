@@ -19,7 +19,7 @@
  * considered less reliable.
  */
 import { linearToRgb, rgbToLinear } from './convert';
-import { InvalidArgumentError } from './errors';
+import { echoInput, InvalidArgumentError } from './errors';
 import { clamp, multiply, type Matrix3, type Vector3 } from './math';
 import { toRgb } from './parse';
 import type { ColorInput, Rgb } from './types';
@@ -359,7 +359,13 @@ export function parseCvdSimulation(text: string): CvdSimulation {
   }
   // Each digit run has one way to match, so a long invalid input cannot backtrack.
   const decimal = /^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/;
-  const severity = amount === undefined ? 1 : decimal.test(amount) ? Number(amount) : NaN;
+  if (amount !== undefined && !decimal.test(amount)) {
+    // Quote the text as typed: "60%" or "" says more than the NaN it would parse to.
+    throw new InvalidArgumentError(
+      `The severity must be a number from 0 to 1, got "${echoInput(amount)}"`,
+    );
+  }
+  const severity = amount === undefined ? 1 : Number(amount);
   cvdMatrix(type, severity);
   return { type, severity };
 }

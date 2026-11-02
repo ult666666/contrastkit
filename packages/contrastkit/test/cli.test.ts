@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { version } from '../package.json';
 import { run } from '../src/cli/run';
 import { composite } from '../src/contrast';
@@ -208,6 +208,7 @@ describe('--cvd simulations', () => {
   it.each([
     [['check', '000', 'fff', '--cvd', 'deuteranomaly'], /--cvd: deuteranomaly needs a severity/],
     [['audit', 'tokens.json', '--cvd', 'deuteranomaly:2'], /--cvd: The severity must be/],
+    [['check', '000', 'fff', '--cvd', 'deuteranomaly:60%'], /from 0 to 1, got "60%"/],
     [['audit', 'tokens.json', '--cvd', 'protanopia:0.5'], /use protanomaly for severity 0.5/],
     [['check', '000', 'fff', '--cvd', 'colorblind'], /--cvd: "colorblind" is not a color vision/],
   ])('rejects %j with exit code 2', (args, message) => {
@@ -413,5 +414,57 @@ describe('terminal styling', () => {
     const styled = cli(['check', '#777', '#fff'], {}, true).stdout;
     expect(styled).toContain('PASS');
     expect(styled).toContain('FAIL');
+  });
+});
+
+// The README shows real terminal output. These checks fail when a change leaves it stale.
+describe('README examples', () => {
+  const readme = readFileSync(new URL('../../../README.md', import.meta.url), 'utf8');
+  const transcripts = [...readme.matchAll(/```console\n\$ ([^\n]+)\n([\s\S]*?)```/g)].map(
+    ([, command = '', output = '']) => ({ command, output }),
+  );
+
+  it('prints what the README shows for every contrastkit command', () => {
+    const commands = transcripts.filter(({ command }) => command.startsWith('npx contrastkit '));
+    expect(commands.length).toBeGreaterThanOrEqual(4);
+    for (const { command, output } of commands) {
+      const args = command.slice('npx contrastkit '.length).split(' ');
+      const { stdout } = cli(args, { 'examples/tokens.json': EXAMPLE_TOKENS });
+      if (!output.includes('...\n')) {
+        expect(stdout, command).toBe(output);
+        continue;
+      }
+      // "..." stands for lines left out; the lines shown must appear in this order.
+      let position = 0;
+      for (const line of output.split('\n').filter((text) => text !== '' && text !== '...')) {
+        const found = stdout.indexOf(`${line}\n`, position);
+        expect(found, `${command}: ${line}`).toBeGreaterThanOrEqual(0);
+        position = found + line.length;
+      }
+    }
+    const strict = cli(['audit', 'examples/tokens.json', '--require', 'AAA'], {
+      'examples/tokens.json': EXAMPLE_TOKENS,
+    });
+    expect(strict.code).toBe(1);
+    expect(strict.stdout.trimEnd().split('\n').at(-1)).toBe('Result: 4 of 7 checked pairs fail.');
+  });
+
+  it('prints what the README shows for examples/library.mjs, whose code it shows', async () => {
+    const example = readFileSync(new URL('../../../examples/library.mjs', import.meta.url), 'utf8');
+    // The README shows the example without its first line, a comment on how to run it.
+    expect(readme).toContain(`\`\`\`js\n${example.slice(example.indexOf('\n') + 1)}\`\`\``);
+    const printed: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((line: string) => {
+      printed.push(line);
+    });
+    try {
+      // vitest.config.ts resolves 'contrastkit' to the source, so no build is needed. The URL
+      // is computed because the example is plain JavaScript without type declarations.
+      await import(new URL('../../../examples/library.mjs', import.meta.url).href);
+    } finally {
+      log.mockRestore();
+    }
+    const transcript = transcripts.find(({ command }) => command === 'node examples/library.mjs');
+    expect(`${printed.join('\n')}\n`).toBe(transcript?.output);
   });
 });

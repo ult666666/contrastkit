@@ -246,6 +246,18 @@ describe('Palette Auditor', () => {
     expect(screen.getByText(/No pair drops below a color difference/)).toBeInTheDocument();
   });
 
+  it("announces the severity a link sets, even between the slider's steps", () => {
+    // Links can hold any severity from 0 to 1. The range input snaps its own value to its 0.05
+    // steps, so its accessible value text must come from the severity that is simulated.
+    renderApp('#c=Leaf.2f855a&c=Ember.c53030&fg=0&bg=1&sim=deuteranomaly:0.33');
+    const slider = screen.getByRole('slider', { name: 'Severity' });
+    expect(slider).toHaveAttribute('aria-valuetext', '0.33');
+    expect(slider.parentElement).toHaveTextContent('0.33');
+    expect(screen.getByText(/Sample drawn as simulated .* severity 0\.33/)).toBeInTheDocument();
+    fireEvent.change(slider, { target: { value: '0.75' } });
+    expect(slider).toHaveAttribute('aria-valuetext', '0.75');
+  });
+
   it('says when no pair is confusable', async () => {
     const { user } = renderApp('#c=A.000000&c=B.ffffff');
     await user.click(screen.getByRole('radio', { name: /Protanopia/ }));
