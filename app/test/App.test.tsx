@@ -117,6 +117,24 @@ describe('Palette Auditor', () => {
     expect(status()).toHaveTextContent('Swapped: Mist on Slate.');
   });
 
+  it('describes every color field with the one format hint until the field has an error', async () => {
+    const { user } = renderApp();
+    const hint = 'Enter colors as hex, rgb(), hsl(), oklch() or a CSS color name.';
+    expect(screen.getAllByText(hint)).toHaveLength(1);
+    const values = screen.getAllByRole('textbox', { name: 'CSS color' });
+    expect(values).toHaveLength(7);
+    for (const value of values) expect(value).toHaveAccessibleDescription(hint);
+    const [first, second] = values;
+    if (!first || !second) throw new Error('missing inputs');
+    await user.clear(first);
+    await user.type(first, 'not a color');
+    expect(first).toHaveAccessibleDescription(/Not a color contrastkit understands/);
+    expect(second).toHaveAccessibleDescription(hint);
+    await user.clear(first);
+    await user.type(first, '#1f2933');
+    expect(first).toHaveAccessibleDescription(hint);
+  });
+
   it('edits names and colors, validating as you type', async () => {
     const { user } = renderApp();
     const [, slateName] = screen.getAllByRole('textbox', { name: 'Name' });

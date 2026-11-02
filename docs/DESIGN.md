@@ -399,6 +399,28 @@ An accessibility tool has to be accessible itself.
 | sRGB only                  | Matches WCAG 2 and most design tokens             | No Display P3 or wide-gamut checks                       |
 | App imports library source | No build-order coupling; always current           | The app bundle compiles the library itself               |
 
+### Limits and roadmap
+
+- WCAG 2 contrast is a coarse model of legibility. It ignores font weight beyond the
+  "large text" cut-off. It is symmetric in foreground and background. And it is known to
+  overstate contrast for some dark pairs and understate it for some light ones, which
+  matters in dark themes. Passing it is necessary for conformance, not proof of
+  readability. APCA, the method proposed for WCAG 3, addresses this; it is not implemented
+  here because its reference code has restrictive licensing.
+- CVD simulation is an approximation of an average observer. Severity is the model's
+  parameter (how far one cone's sensitivity is shifted), not a clinical measurement, and the
+  tritan models are the least reliable. The "hard to tell apart" threshold (ΔE_OK 0.08) is a
+  documented heuristic, not a standard.
+- Fixes change lightness only. They keep the hue, but a slightly different hue or
+  chroma might sometimes be closer. "Closest" assumes contrast changes monotonically along
+  the search path; when it does not, the result still passes.
+- sRGB only: no Display P3. `oklch()` inputs outside sRGB are gamut-mapped.
+- Not supported: translucent backgrounds; translucent palette colors in audits;
+  `lab()`, `lch()`, `hwb()`, `color()`, `none` and relative color syntax.
+- Not yet done: publishing to npm.
+- Roadmap: Display P3, GitHub annotations or SARIF output for `audit`, and importers
+  for Style Dictionary and Tokens Studio files.
+
 ## 10. How correctness is verified
 
 - **Hand-checked WCAG values:** black/white = 21 exactly; #777777/white = 4.478 (fails AA

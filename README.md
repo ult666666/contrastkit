@@ -1,68 +1,32 @@
 # contrastkit
 
-**Accessible color, measured:** WCAG 2.2 contrast checks, perceptual (OKLCH) fixes for
-failing pairs, color-vision-deficiency simulation and palette audits, as a TypeScript
-library, a CLI for CI pipelines and a web app.
+Check colors against WCAG 2.2 contrast, fix failing pairs by changing their OKLCH lightness,
+and simulate color vision deficiencies. contrastkit is a TypeScript library with no runtime
+dependencies, a command-line tool for CI pipelines, and a web app called Palette Auditor.
 
 [![CI](https://github.com/ult666666/contrastkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ult666666/contrastkit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![TypeScript: strict](https://img.shields.io/badge/TypeScript-strict-3178c6.svg)](tsconfig.base.json)
 
-**Live app:** [ult666666.github.io/contrastkit](https://ult666666.github.io/contrastkit/)
+[Open Palette Auditor](https://ult666666.github.io/contrastkit/) to edit a palette, see the
+contrast of every pair and apply suggested fixes. The address bar holds the palette, so a link
+reopens it.
 
 ![Palette Auditor: a palette editor beside a contrast matrix with AAA, AA, Large and Fail badges, and a preview of the selected pair](docs/screenshot.png)
 
-## Why
+## Install
 
-Most contrast checkers stop at "fails". Design teams then nudge colors by hand until the
-number turns green, often drifting the hue. contrastkit measures WCAG 2.2 contrast exactly,
-proposes the smallest perceptual change that passes, and flags color pairs that people with
-color vision deficiencies cannot tell apart. Because the same checks run as a CLI, a
-design-token change can fail CI the way a broken test does.
-
-## Features
-
-- **WCAG 2.2 contrast:** relative luminance, contrast ratio, and checks for SC 1.4.3 (AA),
-  1.4.6 (AAA) and 1.4.11 (non-text). Translucent foregrounds are composited first, and
-  ratios are never rounded up to pass.
-- **Perceptual fixes:** the closest passing color found by binary search on OKLCH
-  lightness in both directions, gamut-mapped, rounded to real hex values and ranked by
-  ΔE_OK. Impossible targets return a typed `unachievable` result.
-- **Color vision simulation:** protanopia, deuteranopia and tritanopia, and the more common
-  anomalous trichromacies (protanomaly, deuteranomaly, tritanomaly) at any severity from 0
-  to 1. It uses Machado, Oliveira & Fernandes's (2009) published matrices, interpolated
-  linearly between their 0.1 steps, and is checked against two independent Python
-  implementations.
-- **Palette audits:** the pairwise contrast matrix, the levels each pair meets, and pairs
-  that become hard to distinguish under each simulation (the three dichromacies, or the
-  simulations you choose, such as deuteranomaly at severity 0.6).
-- **Color parsing:** hex, `rgb()`, `hsl()`, `oklch()` and the 148 CSS named colors, with
-  specific, typed errors. Conversions cover sRGB, linear sRGB, OKLab, OKLCH and HSL, plus
-  CSS Color 4 gamut mapping.
-- **CLI** with `check`, `fix` and `audit`, `--json` output and CI-friendly exit codes.
-- **Palette Auditor web app:** keyboard-operable, screen-reader-friendly, light/dark, with
-  state shareable through the URL and downloadable tokens JSON for CLI audits.
-- Zero runtime dependencies, ESM + CommonJS + type declarations, strict TypeScript.
-
-## Quick start
-
-contrastkit is not published to npm. Install the library and the `contrastkit` CLI from the GitHub release (Node 22 or newer):
+contrastkit is not on npm. Install the library and the `contrastkit` command from the GitHub
+release, which also attaches a SHA-256 checksum (Node 22 or newer):
 
 ```sh
 npm install https://github.com/ult666666/contrastkit/releases/download/v0.1.0/contrastkit-0.1.0.tgz
 npx contrastkit check 777 fff
 ```
 
-Each release also attaches a SHA-256 checksum. Or build it from source:
+To build from source, clone the repository and run `npm ci && npm run build`.
 
-```sh
-git clone https://github.com/ult666666/contrastkit.git
-cd contrastkit
-npm ci
-npm run build
-```
-
-### Library
+## Library
 
 [`examples/library.mjs`](examples/library.mjs):
 
@@ -110,8 +74,8 @@ closest AA fix: #767676 (4.54:1, ΔE_OK 0.003)
 hard to tell apart with deuteranopia: success / danger (ΔE_OK 0.063)
 ```
 
-Ratios are displayed truncated (4.478… shows as 4.47:1), so a value just below a threshold
-never displays as passing.
+Ratios are truncated for display (4.478… shows as 4.47:1), so a value just below a threshold
+never looks like a pass.
 
 Anomalous trichromacy takes a severity from 0 (typical vision) to 1 (the matching
 dichromacy):
@@ -123,7 +87,7 @@ formatHex(simulateCvd('#c53030', 'deuteranomaly', 1)); // '#82752a', same as 'de
 auditPalette(palette, { cvdTypes: [{ type: 'deuteranomaly', severity: 0.6 }] });
 ```
 
-### CLI
+## Command line
 
 Run it from the repository with `npx contrastkit`. Hex colors may omit the `#`, because an
 unquoted `#` starts a comment in most shells.
@@ -158,8 +122,8 @@ Closest fix: #0053bd
 | `contrastkit audit <tokens.json>` | `--require AA\|AAA`, `--cvd <sim>`, `--json`                              |
 
 `--cvd` takes a dichromacy (`deuteranopia`) or an anomalous trichromacy with a severity
-(`deuteranomaly:0.6`) and can be repeated. `check` adds the simulated pair and its color
-difference; the WCAG checks always use the actual colors:
+(`deuteranomaly:0.6`) and can be repeated. `check` then adds the simulated pair and its color
+difference; the WCAG checks always use the colors as given:
 
 ```console
 $ npx contrastkit check 2f855a c53030 --cvd deuteranomaly:0.6 --cvd deuteranopia
@@ -169,40 +133,14 @@ Color vision simulation (Machado et al. 2009; the checks use the actual colors)
   deuteranopia       #78735d on #82752a  ΔE_OK 0.063 (typical vision 0.269)
 ```
 
-`audit --cvd` looks for confusable pairs under the given simulations instead of the three
-dichromacies.
-
-Exit codes: `0` passed (or a fix was found), `1` a check failed or no fix can reach the
-target, `2` invalid usage or input. On a terminal the output includes 24-bit color
-swatches; set `NO_COLOR=1` to turn them off.
+Exit codes: `0` passed (or a fix was found), `1` a check failed or no fix reaches the target,
+`2` invalid usage or input. On a terminal the output includes 24-bit color swatches; set
+`NO_COLOR=1` to turn them off.
 
 ## Use it in CI
 
-Describe your colors and the pairs that must pass in a tokens file. Groups nest with dots,
-and W3C Design Tokens style `{ "$value": ... }` entries work. Here is part of
-[`examples/tokens.json`](examples/tokens.json):
-
-```json
-{
-  "colors": {
-    "text": { "primary": "#1f2937", "muted": "#4b5563", "inverse": "#ffffff" },
-    "surface": { "default": "#ffffff", "subtle": "#f3f4f6" },
-    "status": {
-      "$type": "color",
-      "success": { "$value": "#15803d" },
-      "danger": { "$value": "#b91c1c" }
-    }
-  },
-  "pairs": [
-    { "foreground": "text.primary", "background": "surface.default" },
-    { "foreground": "status.success", "background": "surface.subtle", "use": "large-text" },
-    { "foreground": "border.strong", "background": "surface.default", "use": "non-text" }
-  ]
-}
-```
-
-Each pair is checked at its own `level` (or `--require`, default AA) for its `use`
-(`text`, `large-text` or `non-text`). CVD confusions are reported as warnings:
+Describe your colors and the pairs that must pass in a tokens file, like
+[`examples/tokens.json`](examples/tokens.json), and audit it:
 
 ```console
 $ npx contrastkit audit examples/tokens.json
@@ -227,119 +165,33 @@ Color vision warnings (ΔE_OK below 0.08 after simulation)
 Result: all 7 checked pairs pass.
 ```
 
-(The full output also lists the colors and the contrast matrix.) The same file with
-`--require AAA` ends with `Result: 4 of 7 checked pairs fail.` and exits with code 1.
-
-A GitHub Actions job that blocks merges when tokens lose contrast. Until contrastkit is
-on npm, it builds the CLI from this repository:
-
-```yaml
-name: Design tokens
-on: [push, pull_request]
-permissions:
-  contents: read
-jobs:
-  contrast:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
-        with:
-          repository: ult666666/contrastkit
-          path: .contrastkit
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - run: npm ci && npm run build --workspace contrastkit
-        working-directory: .contrastkit
-      - run: node .contrastkit/packages/contrastkit/dist/cli.js audit tokens.json --require AA
-```
-
-This repository's own [CI](.github/workflows/ci.yml) runs the same audit on the example
-file.
-
-## From the web palette to CI
-
-In the [Palette Auditor](https://ult666666.github.io/contrastkit/), **Download tokens
-JSON** saves `contrastkit-tokens.json`. It includes all actual palette colors and one
-explicit requirement for the selected foreground/background pair, including its target
-level and use. Color-vision simulation affects the preview; exported colors stay the
-actual palette values.
-
-A reproducible repair workflow:
-
-1. Open the default palette. **Slate on Mist** fails AA normal text at 4.20:1.
-2. Select **Download tokens JSON** and save it as `tokens-before.json` in your source checkout.
-3. Select **Apply suggested fix: change Slate to #5d6977**. The pair now passes at 4.51:1.
-4. Download again and save it as `tokens-after.json`.
-5. After `npm ci && npm run build`, audit each downloaded file with the real CLI:
-
-```sh
-node packages/contrastkit/dist/cli.js audit tokens-before.json --json
-# exit 1: the declared Slate/Mist pair fails
-node packages/contrastkit/dist/cli.js audit tokens-after.json --json
-# exit 0: the same declared pair passes
-```
-
-Empty or duplicate names disable the download with a visible, screen-reader-announced
-explanation. Names are trimmed and duplicates are compared without case. A name starting
-with `$` must be changed because the CLI reserves those keys for token metadata. Dotted
-names work as token names. Other editor features remain available while names are being
-corrected.
+The full output also lists the colors and the contrast matrix. Color-vision confusions are
+warnings; a failing pair makes the command exit with code 1. [docs/CI.md](docs/CI.md) explains
+the tokens format, gives a GitHub Actions job, and shows how a file downloaded from Palette
+Auditor goes through the same audit.
 
 ## How it works
 
-```mermaid
-flowchart LR
-  A["CSS color string"] -->|parseColor| B["sRGB"]
-  B -->|sRGB transfer function| C["linear RGB"]
-  C -->|"0.2126 R + 0.7152 G + 0.0722 B"| D["WCAG luminance and contrast"]
-  C -->|"Ottosson M1, cube root, M2"| E["OKLab / OKLCH"]
-  E -->|"bisect lightness, CSS Color 4 gamut map"| F["fixes ranked by ΔE_OK"]
-  C -->|"Machado 2009 matrix"| G["CVD simulation"]
-  D & G --> H["palette audit"]
-  H --> I["CLI"] & J["web app"]
-```
+Contrast is `(L1 + 0.05) / (L2 + 0.05)` on WCAG relative luminance. It linearizes sRGB at the
+standard's 0.04045 threshold, where WCAG 2.0 printed 0.03928; for 8-bit colors the two give the
+same result, which the tests check for every channel value. A fix is a binary search on OKLCH
+lightness towards black and towards white. Every probe is gamut-mapped and rounded to 8 bits, so
+the hex that comes back is the color that was measured to pass. Color vision deficiencies are
+simulated with Machado, Oliveira and Fernandes's (2009) matrices in linear RGB, interpolated
+linearly between their published 0.1 severity steps.
 
-- **Contrast:** `(L1 + 0.05) / (L2 + 0.05)` on WCAG relative luminance. It uses the sRGB
-  standard's 0.04045 linearization threshold (WCAG 2.0 printed 0.03928). For 8-bit colors
-  the two give identical results, which the tests check for all 256 values.
-- **Fixes:** binary search on OKLCH lightness towards black and towards white. Every probe
-  is gamut-mapped and rounded to 8-bit, so the returned hex is exactly the color that was
-  measured to pass.
-- **CVD:** Machado et al.'s matrices applied in linear RGB: severity 1.0 for the
-  dichromacies, and for anomalous trichromacy the published matrices at 0.1 steps,
-  interpolated linearly in between.
+[docs/DESIGN.md](docs/DESIGN.md) covers the math, the algorithms, the accessibility decisions in
+the app, the trade-offs and the references.
 
-[docs/DESIGN.md](docs/DESIGN.md) explains the math, the algorithms, the accessibility
-decisions and the trade-offs in depth.
+## Testing
 
-## Correctness
-
-- **356 tests**: 287 for the library and CLI and 69 for the web app. Library coverage is
-  99.71% of statements and 98.89% of branches, with a 90% threshold enforced.
-- **CVD against independent implementations:** 810 simulations computed by colorspacious
-  1.1.2 (24 colors and 6 random ones, three anomalous types, nine severities including
-  in-between values) agree within 5e-13 per channel. 990 simulations by DaltonLens 0.1.5 at
-  the eleven published severities agree within one 8-bit step (DaltonLens computes in float32
-  and truncates), and both libraries' copies of Machado's table match the one here exactly.
-- **Hand-checked values:** black on white is exactly 21:1, #777777 on white 4.478:1 (fails
-  AA), #767676 4.542:1 and #595959 7.005:1.
-- **Property tests** (fast-check): conversion round trips; gamut mapping always in gamut;
-  every fix meets its target as a hex code; `unachievable` exactly when neither black nor
-  white passes; CVD keeps grays and collapses confusion lines.
-- **Cross-checked against Chromium 152's CSS engine** (once, during development; ten of its
-  values are kept as test fixtures): all 148 named colors match;
-  OKLCH values agree within 4.4e-5; OKLCH → sRGB matches exactly on every sample.
-- **Accessibility:** axe-core finds no violations in the jsdom tests or in a real-browser
-  run of the production build (light and dark themes). The real-browser run excludes only
-  the preview sample, which shows your colors at their real contrast on purpose. A test
-  audits the app's own theme colors with contrastkit.
-- **Downloaded tokens through the real CLI:** app tests capture the actual JSON Blob at
-  the browser download boundary, write it to disk and run the built executable. They
-  verify fail → fix → pass, all five targets, all three CVD views, name validation and
-  recovery, unusual token names and browser download failure. The app test command
-  builds the CLI first, so these checks run in the existing CI suite from a fresh checkout.
+`npm test` runs 357 tests: 287 for the library and CLI, with 99.71% statement coverage, and 70
+for the web app. The color-vision simulation agrees with two independent Python
+implementations, colorspacious and DaltonLens, on 1,800 simulations. axe-core reports no
+violations in the app in jsdom or in Chromium, in light and dark themes; the browser run skips
+only the preview sample, which shows your colors at their own contrast on purpose. CI also runs
+the README's command transcripts and library example and checks that they print what is shown
+here. [docs/DESIGN.md](docs/DESIGN.md#10-how-correctness-is-verified) describes each check.
 
 ## Development
 
@@ -354,47 +206,26 @@ decisions and the trade-offs in depth.
 | `npm run dev -w app`     | Vite dev server for the web app                              |
 | `npm run preview -w app` | Serve the production build locally                           |
 
-The repository is an npm workspace: `packages/contrastkit` (library and CLI) and `app`
-(web app). GitHub Pages deployment runs from `.github/workflows/pages.yml` once Pages is set
-to "GitHub Actions" in the repository settings. Development needs Node 22.22.2+ or 24.15+. Two
-toolchain packages stay below their latest major; the reasons are in
-[docs/DESIGN.md](docs/DESIGN.md#11-toolchain-notes).
+The repository is an npm workspace: `packages/contrastkit` holds the library and CLI, and
+`app` the web app. Development needs Node 22.22.2+ or 24.15+.
+[docs/DESIGN.md](docs/DESIGN.md#11-toolchain-notes) explains why two toolchain packages stay
+below their latest major version, and `.github/workflows/pages.yml` deploys the app to GitHub
+Pages.
 
-## Limitations and roadmap
+## Limits
 
-- **WCAG 2 contrast is a coarse model of legibility.** It ignores font weight beyond the
-  "large text" cut-off. It is symmetric in foreground and background. And it is known to
-  overstate contrast for some dark pairs and understate it for some light ones, which
-  matters in dark themes. Passing it is necessary for conformance, not proof of
-  readability. APCA, the method proposed for WCAG 3, addresses this; it is not implemented
-  here because its reference code has restrictive licensing.
-- **CVD simulation is an approximation** of an average observer. Severity is the model's
-  parameter (how far one cone's sensitivity is shifted), not a clinical measurement, and the
-  tritan models are the least reliable. The "hard to tell apart" threshold (ΔE_OK 0.08) is a
-  documented heuristic, not a standard.
-- **Fixes change lightness only.** They keep the hue, but a slightly different hue or
-  chroma might sometimes be closer. "Closest" assumes contrast changes monotonically along
-  the search path; when it does not, the result still passes.
-- **sRGB only:** no Display P3. `oklch()` inputs outside sRGB are gamut-mapped.
-- **Not supported:** translucent backgrounds; translucent palette colors in audits;
-  `lab()`, `lch()`, `hwb()`, `color()`, `none` and relative color syntax.
-- **Not yet done:** publishing to npm.
-- **Roadmap:** Display P3, GitHub annotations or SARIF output for `audit`, and importers
-  for Style Dictionary and Tokens Studio files.
+- WCAG 2 contrast is a coarse model of legibility, and passing it does not prove text is
+  readable. APCA, proposed for WCAG 3, is not implemented because its reference code has
+  restrictive licensing.
+- Color-vision simulation models an average observer. Severity is a model parameter, not a
+  clinical measurement, and the tritan simulations are the least reliable.
+- Fixes change lightness only, so a hue or chroma change could sometimes be closer.
+- Only sRGB is supported: no Display P3, translucent backgrounds, or `lab()`, `lch()`, `hwb()`
+  and `color()` syntax.
 
-## References
+[docs/DESIGN.md](docs/DESIGN.md#limits-and-roadmap) has the full list and the roadmap.
 
-- W3C, [Web Content Accessibility Guidelines (WCAG) 2.2](https://www.w3.org/TR/WCAG22/):
-  relative luminance, contrast ratio, SC 1.4.3, 1.4.6 and 1.4.11.
-- W3C, [CSS Color Module Level 4](https://www.w3.org/TR/css-color-4/): color syntax,
-  OKLab/OKLCH and gamut mapping.
-- Björn Ottosson, [A perceptual color space for image processing](https://bottosson.github.io/posts/oklab/)
-  (2020).
-- G. M. Machado, M. M. Oliveira, L. A. F. Fernandes, "A Physiologically-based Model for
-  Simulation of Color Vision Deficiency", _IEEE TVCG_ 15(6), 2009, and its
-  [supplementary matrices](https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html)
-  for severities 0.0 to 1.0.
-- IEC 61966-2-1:1999 (sRGB).
+Built with AI coding assistants. I reviewed the code and the tests that check it.
 
 ## License
 

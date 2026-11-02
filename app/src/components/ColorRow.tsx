@@ -8,6 +8,8 @@ interface ColorRowProps {
   /** The color as currently drawn (simulated when a CVD simulation is on). */
   readonly shownHex: string;
   readonly nameError: string | undefined;
+  /** The id of the palette's shared hint on color formats, which describes the value field. */
+  readonly formatHintId: string;
   readonly canRemove: boolean;
   readonly onRename: (name: string) => void;
   readonly onRecolor: (hex: string) => void;
@@ -24,6 +26,7 @@ export function ColorRow({
   position,
   shownHex,
   nameError,
+  formatHintId,
   canRemove,
   onRename,
   onRecolor,
@@ -114,14 +117,10 @@ export function ColorRow({
             spellCheck={false}
             autoComplete="off"
             aria-invalid={valueError !== undefined}
-            aria-describedby={valueError === undefined ? `${id}-value-hint` : `${id}-value-error`}
+            aria-describedby={valueError === undefined ? formatHintId : `${id}-value-error`}
             onChange={onValueChange}
           />
-          {valueError === undefined ? (
-            <p id={`${id}-value-hint`} className="field-hint">
-              Hex, rgb(), hsl(), oklch() or a name
-            </p>
-          ) : (
+          {valueError !== undefined && (
             <p id={`${id}-value-error`} className="field-error">
               {valueError}
             </p>

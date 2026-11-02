@@ -27,6 +27,9 @@ export function PaletteEditor({
   return (
     <section className="panel" aria-labelledby="palette-heading">
       <h2 id="palette-heading">Palette</h2>
+      <p className="field-hint palette-intro" id="color-format-hint">
+        Enter colors as hex, rgb(), hsl(), oklch() or a CSS color name.
+      </p>
       <ol className="color-list">
         {colors.map((color, index) => (
           <ColorRow
@@ -35,6 +38,7 @@ export function PaletteEditor({
             position={index + 1}
             shownHex={shownHex(color.id)}
             nameError={nameProblem(colors, color.id, color.name)}
+            formatHintId="color-format-hint"
             canRemove={canRemove}
             onRename={(name) => {
               onRename(color.id, name);
@@ -69,7 +73,7 @@ export function PaletteEditor({
       </div>
       <p className="field-hint" id="tokens-export-hint" aria-live="polite">
         {exportProblem ??
-          'Downloads actual colors and the selected pair and target for CLI audits.'}
+          'The file holds the palette and the selected pair and target, for contrastkit audit.'}
       </p>
     </section>
   );

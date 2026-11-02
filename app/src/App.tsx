@@ -162,7 +162,8 @@ export function App() {
         <div>
           <h1>Palette Auditor</h1>
           <p className="tagline">
-            WCAG 2.2 contrast for every pair in a palette, perceptual fixes and color-vision checks.
+            Check every pair in a palette against WCAG 2.2, fix failing pairs and simulate color
+            vision deficiencies.
           </p>
         </div>
         <div className="header-actions">
@@ -273,9 +274,8 @@ export function App() {
 
       <footer className="site-footer">
         <p>
-          Built with <a href="https://github.com/ult666666/contrastkit">contrastkit</a>. Contrast
-          follows WCAG 2.2; color-vision simulation follows Machado et al. (2009). Everything runs
-          in your browser.
+          Palette Auditor is part of contrastkit ·{' '}
+          <a href="https://github.com/ult666666/contrastkit">Source on GitHub</a> · MIT License
         </p>
       </footer>
     </>
