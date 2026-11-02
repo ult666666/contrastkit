@@ -357,7 +357,8 @@ export function parseCvdSimulation(text: string): CvdSimulation {
       `${type} needs a severity from 0 to 1, such as ${type}:0.6 (1 is ${DICHROMACY[type]})`,
     );
   }
-  const decimal = /^(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/;
+  // Each digit run has one way to match, so a long invalid input cannot backtrack.
+  const decimal = /^(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/;
   const severity = amount === undefined ? 1 : decimal.test(amount) ? Number(amount) : NaN;
   cvdMatrix(type, severity);
   return { type, severity };

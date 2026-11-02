@@ -210,6 +210,13 @@ describe('parseCvdSimulation and formatCvdSimulation', () => {
     expect(() => parseCvdSimulation(text)).toThrow(InvalidArgumentError);
     expect(() => parseCvdSimulation(text)).toThrow(message);
   });
+
+  it('rejects a very long invalid severity quickly', () => {
+    const started = performance.now();
+    expect(() => parseCvdSimulation(`deuteranomaly:${'9'.repeat(100_000)}x`)).toThrow(/0 to 1/);
+    expect(() => parseCvdSimulation(`deuteranomaly:0.${'9'.repeat(100_000)}`)).not.toThrow();
+    expect(performance.now() - started).toBeLessThan(500);
+  });
 });
 
 describe('auditPalette with anomalous trichromacy', () => {
