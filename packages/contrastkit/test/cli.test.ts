@@ -208,6 +208,7 @@ describe('--cvd simulations', () => {
   it.each([
     [['check', '000', 'fff', '--cvd', 'deuteranomaly'], /--cvd: deuteranomaly needs a severity/],
     [['audit', 'tokens.json', '--cvd', 'deuteranomaly:2'], /--cvd: The severity must be/],
+    [['check', '000', 'fff', '--cvd', 'deuteranomaly:60%'], /from 0 to 1, got "60%"/],
     [['audit', 'tokens.json', '--cvd', 'protanopia:0.5'], /use protanomaly for severity 0.5/],
     [['check', '000', 'fff', '--cvd', 'colorblind'], /--cvd: "colorblind" is not a color vision/],
   ])('rejects %j with exit code 2', (args, message) => {

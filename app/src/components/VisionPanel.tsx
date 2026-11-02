@@ -73,6 +73,9 @@ export function VisionPanel({
             max={1}
             step={0.05}
             value={severity}
+            // A link can set a severity between the 0.05 steps, which the input itself would
+            // report snapped to a step; the text names the severity that is simulated.
+            aria-valuetext={severity.toFixed(2)}
             aria-describedby="severity-hint"
             onChange={(event) => {
               onSeverity(Number(event.target.value));

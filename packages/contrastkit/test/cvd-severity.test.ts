@@ -200,8 +200,11 @@ describe('parseCvdSimulation and formatCvdSimulation', () => {
   it.each([
     ['deuteranomaly', /needs a severity from 0 to 1, such as deuteranomaly:0.6/],
     ['deuteranomaly:1.5', /from 0 to 1, got 1.5/],
-    ['deuteranomaly:abc', /from 0 to 1/],
-    ['deuteranomaly:-0.2', /from 0 to 1/],
+    ['deuteranomaly:abc', /from 0 to 1, got "abc"/],
+    // The text as typed, not the NaN it parses to.
+    ['deuteranomaly:60%', /from 0 to 1, got "60%"/],
+    ['deuteranomaly:', /from 0 to 1, got ""/],
+    ['deuteranomaly:-0.2', /from 0 to 1, got "-0.2"/],
     ['deuteranomaly:0.6:1', /not a color vision simulation/],
     ['protanopia:0.5', /use protanomaly for severity 0.5/],
     ['monochromacy', /not a color vision simulation/],
@@ -213,7 +216,10 @@ describe('parseCvdSimulation and formatCvdSimulation', () => {
 
   it('rejects a very long invalid severity quickly', () => {
     const started = performance.now();
-    expect(() => parseCvdSimulation(`deuteranomaly:${'9'.repeat(100_000)}x`)).toThrow(/0 to 1/);
+    // The echoed text is shortened like a color that fails to parse.
+    expect(() => parseCvdSimulation(`deuteranomaly:${'9'.repeat(100_000)}x`)).toThrow(
+      /0 to 1, got "9{60}…"$/,
+    );
     expect(() => parseCvdSimulation(`deuteranomaly:0.${'9'.repeat(100_000)}`)).not.toThrow();
     expect(performance.now() - started).toBeLessThan(500);
   });

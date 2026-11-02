@@ -316,7 +316,7 @@ decisions and the trade-offs in depth.
 
 ## Correctness
 
-- **349 tests**: 281 for the library and CLI and 68 for the web app. Library coverage is
+- **354 tests**: 285 for the library and CLI and 69 for the web app. Library coverage is
   99.71% of statements and 98.89% of branches, with a 90% threshold enforced.
 - **CVD against independent implementations:** 810 simulations computed by colorspacious
   1.1.2 (24 colors and 6 random ones, three anomalous types, nine severities including

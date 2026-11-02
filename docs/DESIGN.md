@@ -271,6 +271,17 @@ json.dump({
 }, sys.stdout)
 ```
 
+The script prints the JSON on one line, and the committed file is formatted by Prettier, which
+`npm run format:check` enforces. So, with the script saved as `regenerate.py` outside the
+repository, format the new file before comparing or committing it:
+
+```sh
+python -I regenerate.py > packages/contrastkit/test/fixtures/cvd-reference.json
+npx prettier --write packages/contrastkit/test/fixtures/cvd-reference.json
+```
+
+With Python 3.13.17 and numpy 2.5.4 this reproduces the committed fixture byte for byte.
+
 Machado's matrices are not projections, so idempotence (simulating twice changes nothing),
 a property of Viénot/Brettel-style projections, does not apply and is not tested.
 

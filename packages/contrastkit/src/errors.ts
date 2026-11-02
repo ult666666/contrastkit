@@ -9,6 +9,11 @@ export class ContrastKitError extends Error {
 /** Longest input echoed back in an error message; longer inputs are shortened with "…". */
 const MAX_ECHO_LENGTH = 60;
 
+/** `input` as an error message quotes it: cut to {@link MAX_ECHO_LENGTH} characters. */
+export function echoInput(input: string): string {
+  return input.length > MAX_ECHO_LENGTH ? `${input.slice(0, MAX_ECHO_LENGTH)}…` : input;
+}
+
 /** Thrown when a string is not a CSS color that contrastkit understands. */
 export class ColorParseError extends ContrastKitError {
   override name = 'ColorParseError';
@@ -21,8 +26,7 @@ export class ColorParseError extends ContrastKitError {
     readonly input: string,
     readonly reason: string,
   ) {
-    const shown = input.length > MAX_ECHO_LENGTH ? `${input.slice(0, MAX_ECHO_LENGTH)}…` : input;
-    super(`Cannot parse "${shown}" as a color: ${reason}`);
+    super(`Cannot parse "${echoInput(input)}" as a color: ${reason}`);
   }
 }
 
