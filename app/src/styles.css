@@ -306,6 +306,10 @@ label {
 }
 
 /* Palette */
+.palette-intro {
+  margin: -0.25rem 0 1rem;
+}
+
 .color-list {
   display: grid;
   gap: 0.75rem;

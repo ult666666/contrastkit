@@ -82,11 +82,12 @@ export function PairPreview({
           Icons and borders need 3:1
         </p>
       </div>
-      <p className="field-hint">
-        {simulationLabel === undefined
-          ? 'Sample in the actual colors.'
-          : `Sample drawn as simulated for ${simulationLabel}. The ratio below uses the actual colors.`}
-      </p>
+      {simulationLabel !== undefined && (
+        <p className="field-hint">
+          Sample drawn as simulated for {simulationLabel}. The ratio below uses the palette&apos;s
+          own colors.
+        </p>
+      )}
 
       <p className="ratio">
         <span className="ratio-value">{formatRatio(result.ratio)}</span> contrast

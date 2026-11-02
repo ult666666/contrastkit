@@ -31,6 +31,11 @@ severity)` with a severity from 0 to 1, using all of Machado, Oliveira & Fernand
   vitest resolves test environments; Dependabot's lockfile for this update placed it under
   `app/node_modules`, so every app test failed to start. Development needs Node 22.22.2+ or
   24.15+, the floors jsdom 30 declares (`engines` in the root `package.json`).
+- Palette Auditor shows the color-format hint once above the palette instead of under every
+  color, and every color field still references it for screen readers. The tagline, notes and
+  footer are shorter.
+- The README is shorter. The tokens file, the GitHub Actions job and the web-to-CI workflow
+  moved to `docs/CI.md`, and the full limits and roadmap to `docs/DESIGN.md`.
 
 ## [0.1.0] - 2026-10-23
 

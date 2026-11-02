@@ -90,9 +90,8 @@ export function VisionPanel({
         </div>
       )}
       <p className="field-hint">
-        Simulations follow Machado, Oliveira and Fernandes (2009): complete loss of one cone type,
-        or a shifted cone at a severity between 0 and 1. They are approximations. Contrast ratios
-        always use the actual colors.
+        Simulations use the model of Machado, Oliveira and Fernandes (2009) and are approximations.
+        Contrast ratios always use the palette&apos;s own colors.
       </p>
 
       <h3>Hard to tell apart</h3>
@@ -115,8 +114,8 @@ export function VisionPanel({
       )}
       {confusions.length > 0 && (
         <p className="field-hint">
-          Pairs listed here should not be the only way to tell two things apart: add text, icons or
-          patterns (WCAG 1.4.1, Use of Color).
+          Don&apos;t rely on color alone to tell these pairs apart; add text, icons or patterns
+          (WCAG 1.4.1).
         </p>
       )}
     </section>
