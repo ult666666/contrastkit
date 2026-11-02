@@ -356,7 +356,7 @@ decisions and the trade-offs in depth.
 
 The repository is an npm workspace: `packages/contrastkit` (library and CLI) and `app`
 (web app). GitHub Pages deployment runs from `.github/workflows/pages.yml` once Pages is set
-to "GitHub Actions" in the repository settings. Development needs Node 22.18 or newer. Two
+to "GitHub Actions" in the repository settings. Development needs Node 22.22.2+ or 24.15+. Two
 toolchain packages stay below their latest major; the reasons are in
 [docs/DESIGN.md](docs/DESIGN.md#11-toolchain-notes).
 

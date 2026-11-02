@@ -425,8 +425,8 @@ An accessibility tool has to be accessible itself.
 ## 11. Toolchain notes
 
 CI runs on Node 22 and 24. Node 20 reached end-of-life in April 2026, so it is no longer
-supported. The published package needs Node 22 or newer. Development needs Node 22.18 or
-newer, the floor of tsup 9.
+supported. The published package needs Node 22 or newer. Development needs Node 22.22.2+
+or 24.15+ (or 26+), the floors that jsdom 30 declares; tsup 9's floors are lower.
 
 Two toolchain packages stay below their latest major:
 
