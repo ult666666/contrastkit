@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { version } from '../package.json';
 import { run } from '../src/cli/run';
+import { composite } from '../src/contrast';
+import { simulateCvd } from '../src/cvd';
+import { deltaEOK } from '../src/difference';
+import { formatHex } from '../src/format';
 
 const EXAMPLE_TOKENS = readFileSync(
   new URL('../../../examples/tokens.json', import.meta.url),
@@ -129,6 +133,92 @@ describe('contrastkit fix', () => {
     ) as Record<string, unknown>;
     expect(impossible).toMatchObject({ status: 'unachievable', target: { ratio: 7 } });
     expect(impossible).toHaveProperty('maxRatio');
+  });
+});
+
+describe('--cvd simulations', () => {
+  const files = { 'tokens.json': EXAMPLE_TOKENS };
+
+  it('check shows the simulated pair without changing the verdict', () => {
+    const plain = cli(['check', 'c53030', 'fff']);
+    const { code, stdout } = cli([
+      'check',
+      'c53030',
+      'fff',
+      '--cvd',
+      'deuteranomaly:0.6',
+      '--cvd',
+      'protanopia',
+    ]);
+    expect(code).toBe(plain.code);
+    const shown = formatHex(simulateCvd('#c53030', 'deuteranomaly', 0.6));
+    const deltaE = deltaEOK(simulateCvd('#c53030', 'deuteranomaly', 0.6), '#ffffff');
+    expect(stdout).toContain('Color vision simulation (Machado et al. 2009');
+    expect(stdout).toContain(
+      `  deuteranomaly:0.6  ${shown} on #ffffff  ΔE_OK ${deltaE.toFixed(3)}`,
+    );
+    expect(stdout).toContain('  protanopia         ');
+    expect(plain.stdout).not.toContain('Color vision simulation');
+  });
+
+  it('check --json lists each simulated pair, and blends translucent foregrounds first', () => {
+    const report = JSON.parse(
+      cli(['check', 'rgb(197 48 48 / 0.5)', 'fff', '--cvd', 'tritanomaly:0.3', '--json']).stdout,
+    ) as { simulations: Record<string, unknown>[] };
+    const blended = composite('rgb(197 48 48 / 0.5)', '#ffffff');
+    const shown = simulateCvd(blended, 'tritanomaly', 0.3);
+    const background = simulateCvd('#ffffff', 'tritanomaly', 0.3);
+    expect(report.simulations).toEqual([
+      {
+        type: 'tritanomaly',
+        severity: 0.3,
+        foreground: formatHex(shown),
+        background: formatHex(background),
+        deltaE: deltaEOK(shown, background),
+        typicalDeltaE: deltaEOK(blended, '#ffffff'),
+      },
+    ]);
+    expect(JSON.parse(cli(['check', '000', 'fff', '--json']).stdout)).not.toHaveProperty(
+      'simulations',
+    );
+  });
+
+  it('audit uses the given simulations instead of the three dichromacies', () => {
+    const { code, stdout } = cli(['audit', 'tokens.json', '--cvd', 'deuteranomaly:0.6'], files);
+    expect(code).toBe(0);
+    expect(stdout).toContain('WARN  deuteranomaly:0.6  status.success / status.danger');
+    expect(stdout).not.toContain('deuteranopia');
+    expect(stdout).not.toContain('protanopia');
+
+    const report = JSON.parse(
+      cli(['audit', 'tokens.json', '--json', '--cvd', 'deuteranomaly:0.6'], files).stdout,
+    ) as { simulations: unknown[]; cvdConfusions: { type: string; severity: number }[] };
+    expect(report.simulations).toEqual([{ type: 'deuteranomaly', severity: 0.6 }]);
+    expect(report.cvdConfusions.length).toBeGreaterThan(0);
+    for (const confusion of report.cvdConfusions) {
+      expect(confusion).toMatchObject({ type: 'deuteranomaly', severity: 0.6 });
+    }
+  });
+
+  it('audit names the simulations when no pair is confused', () => {
+    const { stdout } = cli(['audit', 'tokens.json', '--cvd', 'protanomaly:0.1'], files);
+    expect(stdout).toContain('None: every pair stays distinguishable with protanomaly:0.1.');
+  });
+
+  it.each([
+    [['check', '000', 'fff', '--cvd', 'deuteranomaly'], /--cvd: deuteranomaly needs a severity/],
+    [['audit', 'tokens.json', '--cvd', 'deuteranomaly:2'], /--cvd: The severity must be/],
+    [['audit', 'tokens.json', '--cvd', 'protanopia:0.5'], /use protanomaly for severity 0.5/],
+    [['check', '000', 'fff', '--cvd', 'colorblind'], /--cvd: "colorblind" is not a color vision/],
+  ])('rejects %j with exit code 2', (args, message) => {
+    const { code, stderr } = cli(args, files);
+    expect(code).toBe(2);
+    expect(stderr).toMatch(message);
+    expect(stderr).toContain('Run "contrastkit --help" for usage.');
+  });
+
+  it('documents the flag in --help', () => {
+    expect(cli(['--help']).stdout).toContain('--cvd deuteranomaly:0.6');
   });
 });
 

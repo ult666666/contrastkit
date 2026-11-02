@@ -12,9 +12,10 @@ export type { CliIo } from './shared';
 export const USAGE = `contrastkit ${version}: accessible color, measured
 
 Usage
-  contrastkit check <foreground> <background> [--level AA|AAA] [--large] [--target <ratio>] [--json]
+  contrastkit check <foreground> <background> [--level AA|AAA] [--large] [--target <ratio>]
+                    [--cvd <simulation>]... [--json]
   contrastkit fix   <foreground> <background> [--level AA|AAA] [--large] [--target <ratio>] [--json]
-  contrastkit audit <tokens.json> [--require AA|AAA] [--json]
+  contrastkit audit <tokens.json> [--require AA|AAA] [--cvd <simulation>]... [--json]
 
 Colors may be hex (the # is optional), rgb(), hsl(), oklch() or CSS color names.
 Quote anything with spaces, parentheses or #, e.g. 'rgb(0 0 0 / 50%)'.
@@ -25,6 +26,11 @@ Options
   --target <ratio>   A custom contrast ratio from 1 to 21 instead of --level/--large
   --require AA|AAA   audit: level for pairs that do not declare one (default AA);
                      if the file declares no pairs, check every pair at this level
+  --cvd <simulation> Simulate color vision: protanopia, deuteranopia or tritanopia, or
+                     protanomaly, deuteranomaly or tritanomaly with a severity from 0
+                     to 1, e.g. --cvd deuteranomaly:0.6 (repeat for several). check
+                     shows the simulated pair; audit uses these instead of the three
+                     dichromacies when it looks for colors that become hard to tell apart
   --json             Print machine-readable JSON
   -h, --help         Show this help
   -v, --version      Show the version

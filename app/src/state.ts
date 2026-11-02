@@ -1,4 +1,4 @@
-import type { ContrastUse, CvdType, WcagLevel } from 'contrastkit';
+import type { AnomalousCvdType, ContrastUse, CvdKind, WcagLevel } from 'contrastkit';
 
 /** One editable palette color. `hex` is always a valid, opaque `#rrggbb`. */
 export interface PaletteColor {
@@ -7,14 +7,25 @@ export interface PaletteColor {
   readonly hex: string;
 }
 
-export type Simulation = 'none' | CvdType;
+export type Simulation = 'none' | CvdKind;
 
 export const SIMULATIONS: readonly Simulation[] = [
   'none',
   'protanopia',
   'deuteranopia',
   'tritanopia',
+  'protanomaly',
+  'deuteranomaly',
+  'tritanomaly',
 ];
+
+/** Severity for the anomalous trichromacies until one is chosen: a moderate deficiency. */
+export const DEFAULT_SEVERITY = 0.6;
+
+/** Whether a simulation takes a severity (anomalous trichromacy) or is complete (dichromacy). */
+export function isAnomalous(simulation: Simulation): simulation is AnomalousCvdType {
+  return simulation.endsWith('anomaly');
+}
 
 /** The WCAG requirement the fix suggestions aim for. */
 export interface FixTarget {
@@ -54,6 +65,8 @@ export interface AppState {
   readonly foregroundId: string;
   readonly backgroundId: string;
   readonly simulation: Simulation;
+  /** Severity from 0 to 1, used when the simulation is an anomalous trichromacy. */
+  readonly severity: number;
   readonly targetId: string;
   /** Source of new ids; only ever increases, so ids are never reused. */
   readonly nextId: number;
@@ -65,6 +78,7 @@ export interface SharedState {
   readonly foreground: number;
   readonly background: number;
   readonly simulation: Simulation;
+  readonly severity: number;
   readonly targetId: string;
 }
 
@@ -81,6 +95,7 @@ export const DEFAULT_SHARED_STATE: SharedState = {
   foreground: 1,
   background: 3,
   simulation: 'none',
+  severity: DEFAULT_SEVERITY,
   targetId: DEFAULT_TARGET_ID,
 };
 
@@ -95,6 +110,7 @@ export function fromShared(shared: SharedState): AppState {
     foregroundId: idAt(shared.foreground),
     backgroundId: idAt(shared.background),
     simulation: shared.simulation,
+    severity: shared.severity,
     targetId: shared.targetId,
     nextId: colors.length,
   };
@@ -111,6 +127,7 @@ export function toShared(state: AppState): SharedState {
     foreground: indexOf(state.foregroundId),
     background: indexOf(state.backgroundId),
     simulation: state.simulation,
+    severity: state.severity,
     targetId: state.targetId,
   };
 }
@@ -123,6 +140,7 @@ export type Action =
   | { readonly type: 'select'; readonly foregroundId: string; readonly backgroundId: string }
   | { readonly type: 'swap' }
   | { readonly type: 'simulate'; readonly simulation: Simulation }
+  | { readonly type: 'severity'; readonly severity: number }
   | { readonly type: 'target'; readonly targetId: string }
   | { readonly type: 'load'; readonly shared: SharedState };
 
@@ -157,6 +175,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, foregroundId: state.backgroundId, backgroundId: state.foregroundId };
     case 'simulate':
       return { ...state, simulation: action.simulation };
+    case 'severity':
+      return { ...state, severity: Math.min(1, Math.max(0, action.severity)) };
     case 'target':
       return { ...state, targetId: action.targetId };
     case 'load':

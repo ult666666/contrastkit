@@ -47,7 +47,20 @@ export {
   type WcagLevel,
 } from './contrast';
 export { suggestFix, type FixCandidate, type FixOptions, type FixResult } from './fix';
-export { CVD_MATRICES, CVD_TYPES, simulateCvd, type CvdType } from './cvd';
+export {
+  ANOMALOUS_CVD_TYPES,
+  ANOMALY_MATRICES,
+  CVD_MATRICES,
+  CVD_TYPES,
+  cvdMatrix,
+  formatCvdSimulation,
+  parseCvdSimulation,
+  simulateCvd,
+  type AnomalousCvdType,
+  type CvdKind,
+  type CvdSimulation,
+  type CvdType,
+} from './cvd';
 export {
   DEFAULT_CONFUSION_THRESHOLD,
   auditPalette,

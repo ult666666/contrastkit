@@ -152,9 +152,25 @@ check what is guaranteed:
 ## 5. Color-vision-deficiency simulation
 
 **Method:** Machado, Oliveira & Fernandes (2009). The paper models anomalous trichromacy
-as a shift of one cone type's spectral sensitivity and publishes one 3×3 matrix per
-deficiency and severity. contrastkit uses the severity-1.0 matrices (dichromacy) and
-applies them in linear RGB, then clips to the gamut and re-encodes.
+as a shift of one cone type's peak spectral sensitivity and publishes, in its
+[supplementary material](https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html),
+one 3×3 matrix per deficiency (protan, deutan, tritan) at severities 0.0, 0.1, …, 1.0.
+Severity 0 is the identity matrix (typical vision) and severity 1 is dichromacy, a missing
+cone type. contrastkit stores all 33 matrices (`ANOMALY_MATRICES`) and applies them in
+linear RGB, then clips to the gamut and re-encodes.
+
+- **Dichromacies** (`protanopia`, `deuteranopia`, `tritanopia`) use the severity-1.0
+  matrices, as before. They take no severity: asking for `protanopia` at 0.5 is an error that
+  points to `protanomaly`.
+- **Anomalous trichromacies** (`protanomaly`, `deuteranomaly`, `tritanomaly`) take a
+  severity s in [0, 1]. At a multiple of 0.1 the published matrix is used as is; otherwise
+  `cvdMatrix` interpolates element-wise between the two published matrices around it,
+  `(1 − t) · A + t · B` with `t = 10s − ⌊10s⌋`, as the paper suggests. At s = 1 the result is
+  exactly the dichromacy's matrix, so `simulateCvd(c, 'deuteranomaly', 1)` equals
+  `simulateCvd(c, 'deuteranopia')` bit for bit (a property test checks this).
+- **Text form.** `parseCvdSimulation` reads `deuteranopia` or `deuteranomaly:0.6`, and
+  `formatCvdSimulation` writes it back; the CLI's `--cvd` flag and the app's links use it.
+  Errors name the problem: a missing severity, one outside [0, 1], or an unknown type.
 
 **Why Machado rather than Viénot 1999 + Brettel 1997?** It covers all three deficiencies
 with one published set of coefficients. The coefficients can also be checked: every row
@@ -171,14 +187,98 @@ cone-fundamental data at specific wavelengths that are not reproduced here.
   type does;
 - every color on the confusion line through mid-gray (the matrix's null direction)
   simulates to that same gray (property test);
-- protanopia darkens pure red while deuteranopia does not, matching the physiology.
+- protanopia darkens pure red while deuteranopia does not, matching the physiology;
+- the published table: index 0 is the identity, index 10 equals the severity-1.0 matrices,
+  every row sums to 1, and it equals DaltonLens's independent copy exactly;
+- grays stay gray, outputs stay in gamut and results change continuously with severity at
+  every severity (property tests); a red/green pair grows harder to tell apart as
+  deuteranomaly gets more severe.
+
+**Differential tests against independent implementations.** `test/fixtures/cvd-reference.json`
+holds values computed by two Python libraries that implement the same paper:
+
+- **colorspacious 1.1.2** (`sRGB1+CVD` with `cvd_type` and `severity` from 0 to 100), for
+  30 colors (24 named and 6 random), the three anomalous types and nine severities, five of
+  them between published steps: 810 simulations. colorspacious does not clip, so the test
+  clips its values; the largest channel difference is 5.0e-13, against a tolerance of 1e-9.
+- **DaltonLens 0.1.5** (`Simulator_Machado2009`) at the eleven published severities for the
+  same colors: 990 simulations, compared as 8-bit values. DaltonLens computes in float32 and
+  truncates to 8 bits, so the test allows one step; measured with truncation, 63 of 2,970
+  channels differ by one step, all within 3e-14 of a step boundary. Between steps,
+  DaltonLens 0.1.5 weights the upper matrix by `severity − lower/10`, which stays below 0.1,
+  so its in-between results stay near the lower matrix; it is used only at the steps.
+- Both libraries' copies of the table, which come from the authors' page through different
+  routes, match each other and the matrices here exactly.
+
+Five deliberate bugs each fail these tests: no interpolation (always the lower matrix), one
+transposed digit in one published entry, severity scaled by 9.9 instead of 10, the matrix
+applied to gamma-encoded instead of linear RGB, and one interpolated entry read from the wrong
+column.
+
+To regenerate the fixture, run this script with `python -I` in a throwaway virtual environment
+(`pip install colorspacious==1.1.2 daltonlens==0.1.5`) and write its output to the fixture path;
+only the JSON is kept in the repository:
+
+```python
+"""Fixtures for contrastkit's anomalous trichromacy simulation (run with python -I)."""
+import json, sys, warnings
+warnings.filterwarnings("ignore")
+import numpy as np
+import colorspacious
+from colorspacious import cspace_convert
+from daltonlens import simulate
+from daltonlens.simulate import Deficiency, machado_2009_matrices
+
+COLORS = ["#000000", "#ffffff", "#808080", "#ff0000", "#00ff00", "#0000ff", "#ffff00",
+          "#00ffff", "#ff00ff", "#1f2933", "#616e7c", "#e4e7eb", "#2b6cb0", "#2f855a",
+          "#c53030", "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
+          "#e377c2", "#bcbd22", "#17becf"]
+rng = np.random.default_rng(20091115)
+COLORS += ["#%02x%02x%02x" % tuple(rng.integers(0, 256, 3)) for _ in range(6)]
+TYPES = {"protanomaly": Deficiency.PROTAN, "deuteranomaly": Deficiency.DEUTAN,
+         "tritanomaly": Deficiency.TRITAN}
+SEVERITIES = [0, 0.1, 0.25, 0.37, 0.5, 0.6, 0.83, 0.95, 1]
+
+def rgb01(hex_):
+    return np.array([int(hex_[i:i + 2], 16) / 255 for i in (1, 3, 5)])
+
+cases = []
+for color in COLORS:
+    for name in TYPES:
+        for severity in SEVERITIES:
+            space = {"name": "sRGB1+CVD", "cvd_type": name, "severity": severity * 100}
+            out = cspace_convert(rgb01(color), space, "sRGB1")
+            cases.append([color, name, severity, *[round(float(v), 12) for v in out]])
+
+simulator = simulate.Simulator_Machado2009()
+steps = []
+image = np.array([[[int(c[i:i + 2], 16) for i in (1, 3, 5)] for c in COLORS]], dtype=np.uint8)
+for name, deficiency in TYPES.items():
+    for step in range(11):
+        out = simulator.simulate_cvd(image, deficiency, step / 10)
+        steps.append([name, step / 10, " ".join("#%02x%02x%02x" % tuple(int(v) for v in px) for px in out[0])])
+
+json.dump({
+    "description": "Independent reference values for Machado, Oliveira and Fernandes (2009) "
+                   "anomalous trichromacy simulation. See docs/DESIGN.md section 5.",
+    "generatedWith": {"python": sys.version.split()[0], "numpy": np.__version__,
+                      "colorspacious": "1.1.2", "daltonlens": "0.1.5"},
+    "colors": " ".join(COLORS),
+    "daltonlensMatrices": {name: [machado_2009_matrices[d][s].tolist() for s in range(11)]
+                           for name, d in TYPES.items()},
+    "colorspacious": {"columns": ["color", "type", "severity", "r", "g", "b"], "rows": cases},
+    "daltonlens": {"columns": ["type", "severity", "simulated hex of each color, in order"], "rows": steps},
+}, sys.stdout)
+```
 
 Machado's matrices are not projections, so idempotence (simulating twice changes nothing),
 a property of Viénot/Brettel-style projections, does not apply and is not tested.
 
-**Limitations:** an average observer, not any individual; dichromacy only (anomalous
-trichromacy is more common and milder); the tritanopia matrix is not rank 2 and tritan
-simulations are generally considered less reliable; it assumes an sRGB display.
+**Limitations:** an average observer, not any individual; severity is the model's
+parameter (a shift of the cone's peak sensitivity), not a clinical measurement, and linear
+interpolation between published steps is an approximation of the model itself; the
+tritanopia matrix is not rank 2 and tritan simulations are generally considered less
+reliable; it assumes an sRGB display.
 
 ## 6. Palette audits
 
@@ -186,7 +286,9 @@ simulations are generally considered less reliable; it assumes an sRGB display.
 unordered pair with its WCAG checks and ΔE_OK, and **CVD confusions**: pairs whose ΔE_OK is
 at least a threshold in typical vision but falls below it after simulation. Pairs that
 already look alike in typical vision are not repeated for every deficiency. Palette colors
-must be opaque.
+must be opaque. By default the three dichromacies are simulated; `cvdTypes` can list others,
+such as `{ type: 'deuteranomaly', severity: 0.6 }`, and every confusion records its type and
+severity (1 for a dichromacy).
 
 **Threshold: 0.08 (four JNDs), configurable.** A JND is measured on large patches side by
 side; interface colors are often small and far apart. These measurements (ΔE_OK, produced
@@ -215,6 +317,11 @@ It is a heuristic, not a standard; `--json` and the library expose the raw ΔE v
 - `audit` checks declared pairs (each at its own `level`, default `--require`, default AA)
   and reports CVD warnings. If the tokens file declares no pairs, `--require` checks every
   pair; without it, `audit` only reports.
+- `--cvd <simulation>`, repeatable, takes `deuteranopia` or `deuteranomaly:0.6`. `check`
+  prints each simulated pair and its ΔE_OK (the WCAG checks and exit code still use the
+  actual colors; a translucent foreground is simulated as the color it blends to). `audit`
+  looks for confusable pairs under these simulations instead of the three dichromacies, and
+  its JSON lists them. An invalid value exits 2 with the reason.
 - Exit codes: 0 pass, 1 failed check, 2 usage or input error. That makes `audit` usable as
   a CI gate.
 - The tokens format: nested groups joined with dots, string values or W3C-style
@@ -262,18 +369,24 @@ An accessibility tool has to be accessible itself.
   (ratio and checks), and the real-browser axe run excludes only that element.
 - **Simulation is visual only.** Swatches and the preview are drawn as simulated, but
   ratios always use the actual colors, as WCAG defines them.
+- **Severity control.** Choosing an anomalous trichromacy reveals a labelled range input
+  (0 to 1, step 0.05, keyboard operable) with a hint tied by `aria-describedby`. The value
+  beside it is plain text rather than `<output>`, which is a live region and would repeat
+  every step on top of the slider's own announcement. The "Hard to tell apart" list then
+  includes that simulation at its severity, and the link stores it as
+  `sim=deuteranomaly:0.6`; links made before this change still open.
 
 ## 9. Trade-offs
 
-| Choice                       | Benefit                                          | Cost                                                     |
-| ---------------------------- | ------------------------------------------------ | -------------------------------------------------------- |
-| Fix changes lightness only   | Keeps the brand hue; easy to explain             | A hue or chroma change could be closer in rare cases     |
-| Bisection on lightness       | ~17 probes per direction; result always verified | "Closest" assumes monotonic contrast along the path      |
-| CSS Color 4 gamut mapping    | Standard behavior; no needless desaturation      | Result can differ from the constant-hue color by < 1 JND |
-| Machado 2009 at severity 1.0 | One model for all three types; checkable numbers | No anomalous trichromacy; tritan less reliable           |
-| Truncate displayed ratios    | Never shows a fail as a pass                     | Differs by 0.01 from tools that round                    |
-| sRGB only                    | Matches WCAG 2 and most design tokens            | No Display P3 or wide-gamut checks                       |
-| App imports library source   | No build-order coupling; always current          | The app bundle compiles the library itself               |
+| Choice                     | Benefit                                           | Cost                                                     |
+| -------------------------- | ------------------------------------------------- | -------------------------------------------------------- |
+| Fix changes lightness only | Keeps the brand hue; easy to explain              | A hue or chroma change could be closer in rare cases     |
+| Bisection on lightness     | ~17 probes per direction; result always verified  | "Closest" assumes monotonic contrast along the path      |
+| CSS Color 4 gamut mapping  | Standard behavior; no needless desaturation       | Result can differ from the constant-hue color by < 1 JND |
+| Machado 2009 matrix table  | One model for all types and severities; checkable | Interpolation between steps; tritan less reliable        |
+| Truncate displayed ratios  | Never shows a fail as a pass                      | Differs by 0.01 from tools that round                    |
+| sRGB only                  | Matches WCAG 2 and most design tokens             | No Display P3 or wide-gamut checks                       |
+| App imports library source | No build-order coupling; always current           | The app bundle compiles the library itself               |
 
 ## 10. How correctness is verified
 
@@ -293,6 +406,8 @@ An accessibility tool has to be accessible itself.
   oklch() formatting); gamut mapping always in gamut and within one JND of the original's
   lightness/hue line; contrast symmetric and within [1, 21]; the fix-search and CVD
   properties above; audit confusions consistent with the threshold.
+- **CVD against colorspacious and DaltonLens:** the differential tests in section 5, 810
+  and 990 simulations.
 - **CLI tests** run every command, flag and error path in memory, including exit codes,
   JSON output, TTY styling and the example tokens file.
 - **App tests** (Testing Library + user-event in jsdom) cover editing, validation, grid
@@ -338,6 +453,11 @@ npm 11 skips the install scripts of esbuild and fsevents unless approved; they a
   https://bottosson.github.io/posts/oklab/
 - G. M. Machado, M. M. Oliveira, L. A. F. Fernandes, _A Physiologically-based Model for
   Simulation of Color Vision Deficiency_, IEEE TVCG 15(6), 2009, doi:10.1109/TVCG.2009.113.
+- Machado et al.'s supplementary matrices,
+  https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html
+- Independent implementations used as test references: N. J. Smith, _colorspacious_
+  1.1.2, https://github.com/njsmith/colorspacious, and _DaltonLens-Python_ 0.1.5,
+  https://github.com/DaltonLens/DaltonLens-Python
 - F. Viénot, H. Brettel, J. D. Mollon, _Digital video colourmaps for checking the
   legibility of displays by dichromats_, Color Research & Application 24(4), 1999
   (considered, not used).

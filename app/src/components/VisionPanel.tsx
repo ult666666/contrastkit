@@ -1,27 +1,47 @@
 import type { CvdConfusion } from 'contrastkit';
-import { SIMULATIONS, type Simulation } from '../state';
+import { SIMULATIONS, isAnomalous, type Simulation } from '../state';
 
 export const SIMULATION_LABELS: Readonly<Record<Simulation, string>> = {
   none: 'Typical color vision',
   protanopia: 'Protanopia (no red-sensitive cones)',
   deuteranopia: 'Deuteranopia (no green-sensitive cones)',
   tritanopia: 'Tritanopia (no blue-sensitive cones)',
+  protanomaly: 'Protanomaly (weak red-sensitive cones)',
+  deuteranomaly: 'Deuteranomaly (weak green-sensitive cones)',
+  tritanomaly: 'Tritanomaly (weak blue-sensitive cones)',
 };
+
+/** The complete form that each anomalous trichromacy reaches at severity 1. */
+const COMPLETE_FORM: Readonly<Record<string, string>> = {
+  protanomaly: 'protanopia',
+  deuteranomaly: 'deuteranopia',
+  tritanomaly: 'tritanopia',
+};
+
+/** "Deuteranomaly (weak green-sensitive cones), severity 0.60", or the plain label. */
+export function describeSimulation(simulation: Simulation, severity: number): string {
+  const label = SIMULATION_LABELS[simulation];
+  return isAnomalous(simulation) ? `${label}, severity ${severity.toFixed(2)}` : label;
+}
 
 interface VisionPanelProps {
   readonly simulation: Simulation;
+  readonly severity: number;
   readonly confusions: readonly CvdConfusion[];
   readonly threshold: number;
   readonly nameOf: (id: string) => string;
   readonly onSimulate: (simulation: Simulation) => void;
+  readonly onSeverity: (severity: number) => void;
 }
 
 export function VisionPanel({
   simulation,
+  severity,
   confusions,
   threshold,
   nameOf,
   onSimulate,
+  onSeverity,
 }: VisionPanelProps) {
   return (
     <section className="panel" aria-labelledby="vision-heading">
@@ -43,9 +63,33 @@ export function VisionPanel({
           </label>
         ))}
       </fieldset>
+      {isAnomalous(simulation) && (
+        <div className="field severity">
+          <label htmlFor="severity">Severity</label>
+          <input
+            id="severity"
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={severity}
+            aria-describedby="severity-hint"
+            onChange={(event) => {
+              onSeverity(Number(event.target.value));
+            }}
+          />
+          {/* Plain text, not <output>: that is a live region and would repeat every step. */}
+          <span className="severity-value">{severity.toFixed(2)}</span>
+          <p id="severity-hint" className="field-hint">
+            0 is typical vision and 1 is {COMPLETE_FORM[simulation]}. The model&apos;s severity is
+            not a clinical measurement.
+          </p>
+        </div>
+      )}
       <p className="field-hint">
-        Simulations follow Machado, Oliveira and Fernandes (2009) for complete loss of one cone
-        type. They are approximations. Contrast ratios always use the actual colors.
+        Simulations follow Machado, Oliveira and Fernandes (2009): complete loss of one cone type,
+        or a shifted cone at a severity between 0 and 1. They are approximations. Contrast ratios
+        always use the actual colors.
       </p>
 
       <h3>Hard to tell apart</h3>
@@ -56,9 +100,11 @@ export function VisionPanel({
       ) : (
         <ul className="confusions">
           {confusions.map((confusion) => (
-            <li key={`${confusion.type}-${confusion.a}-${confusion.b}`}>
+            <li key={`${confusion.type}-${confusion.severity}-${confusion.a}-${confusion.b}`}>
               <strong>{nameOf(confusion.a)}</strong> and <strong>{nameOf(confusion.b)}</strong> with{' '}
-              {confusion.type}: ΔE<sub>OK</sub> {confusion.deltaE.toFixed(3)} (typical vision{' '}
+              {confusion.type}
+              {isAnomalous(confusion.type) && ` at severity ${confusion.severity.toFixed(2)}`}: ΔE
+              <sub>OK</sub> {confusion.deltaE.toFixed(3)} (typical vision{' '}
               {confusion.typicalDeltaE.toFixed(3)})
             </li>
           ))}

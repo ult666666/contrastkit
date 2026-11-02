@@ -28,10 +28,14 @@ design-token change can fail CI the way a broken test does.
 - **Perceptual fixes:** the closest passing color found by binary search on OKLCH
   lightness in both directions, gamut-mapped, rounded to real hex values and ranked by
   ΔE_OK. Impossible targets return a typed `unachievable` result.
-- **Color vision simulation:** protanopia, deuteranopia and tritanopia (Machado, Oliveira
-  & Fernandes 2009).
+- **Color vision simulation:** protanopia, deuteranopia and tritanopia, and the more common
+  anomalous trichromacies (protanomaly, deuteranomaly, tritanomaly) at any severity from 0
+  to 1. It uses Machado, Oliveira & Fernandes's (2009) published matrices, interpolated
+  linearly between their 0.1 steps, and is checked against two independent Python
+  implementations.
 - **Palette audits:** the pairwise contrast matrix, the levels each pair meets, and pairs
-  that become hard to distinguish under each simulation.
+  that become hard to distinguish under each simulation (the three dichromacies, or the
+  simulations you choose, such as deuteranomaly at severity 0.6).
 - **Color parsing:** hex, `rgb()`, `hsl()`, `oklch()` and the 148 CSS named colors, with
   specific, typed errors. Conversions cover sRGB, linear sRGB, OKLab, OKLCH and HSL, plus
   CSS Color 4 gamut mapping.
@@ -109,6 +113,16 @@ hard to tell apart with deuteranopia: success / danger (ΔE_OK 0.063)
 Ratios are displayed truncated (4.478… shows as 4.47:1), so a value just below a threshold
 never displays as passing.
 
+Anomalous trichromacy takes a severity from 0 (typical vision) to 1 (the matching
+dichromacy):
+
+```js
+formatHex(simulateCvd('#c53030', 'deuteranomaly', 0.3)); // '#a7572c'
+formatHex(simulateCvd('#c53030', 'deuteranomaly', 0.6)); // '#93682b'
+formatHex(simulateCvd('#c53030', 'deuteranomaly', 1)); // '#82752a', same as 'deuteranopia'
+auditPalette(palette, { cvdTypes: [{ type: 'deuteranomaly', severity: 0.6 }] });
+```
+
 ### CLI
 
 Run it from the repository with `npx contrastkit`. Hex colors may omit the `#`, because an
@@ -137,11 +151,26 @@ Suggestions, closest first (only OKLCH lightness changes):
 Closest fix: #0053bd
 ```
 
-| Command                           | Options                                                    |
-| --------------------------------- | ---------------------------------------------------------- |
-| `contrastkit check <fg> <bg>`     | `--level AA\|AAA`, `--large`, `--target <ratio>`, `--json` |
-| `contrastkit fix <fg> <bg>`       | `--level AA\|AAA`, `--large`, `--target <ratio>`, `--json` |
-| `contrastkit audit <tokens.json>` | `--require AA\|AAA`, `--json`                              |
+| Command                           | Options                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| `contrastkit check <fg> <bg>`     | `--level AA\|AAA`, `--large`, `--target <ratio>`, `--cvd <sim>`, `--json` |
+| `contrastkit fix <fg> <bg>`       | `--level AA\|AAA`, `--large`, `--target <ratio>`, `--json`                |
+| `contrastkit audit <tokens.json>` | `--require AA\|AAA`, `--cvd <sim>`, `--json`                              |
+
+`--cvd` takes a dichromacy (`deuteranopia`) or an anomalous trichromacy with a severity
+(`deuteranomaly:0.6`) and can be repeated. `check` adds the simulated pair and its color
+difference; the WCAG checks always use the actual colors:
+
+```console
+$ npx contrastkit check 2f855a c53030 --cvd deuteranomaly:0.6 --cvd deuteranopia
+...
+Color vision simulation (Machado et al. 2009; the checks use the actual colors)
+  deuteranomaly:0.6  #6e785c on #93682b  ΔE_OK 0.076 (typical vision 0.269)
+  deuteranopia       #78735d on #82752a  ΔE_OK 0.063 (typical vision 0.269)
+```
+
+`audit --cvd` looks for confusable pairs under the given simulations instead of the three
+dichromacies.
 
 Exit codes: `0` passed (or a fix was found), `1` a check failed or no fix can reach the
 target, `2` invalid usage or input. On a terminal the output includes 24-bit color
@@ -278,15 +307,22 @@ flowchart LR
 - **Fixes:** binary search on OKLCH lightness towards black and towards white. Every probe
   is gamut-mapped and rounded to 8-bit, so the returned hex is exactly the color that was
   measured to pass.
-- **CVD:** Machado et al.'s severity-1.0 matrices applied in linear RGB.
+- **CVD:** Machado et al.'s matrices applied in linear RGB: severity 1.0 for the
+  dichromacies, and for anomalous trichromacy the published matrices at 0.1 steps,
+  interpolated linearly in between.
 
 [docs/DESIGN.md](docs/DESIGN.md) explains the math, the algorithms, the accessibility
 decisions and the trade-offs in depth.
 
 ## Correctness
 
-- **309 tests**: 247 for the library and CLI and 62 for the web app. Library coverage is
-  99.68% of statements and 98.76% of branches, with a 90% threshold enforced.
+- **349 tests**: 281 for the library and CLI and 68 for the web app. Library coverage is
+  99.71% of statements and 98.89% of branches, with a 90% threshold enforced.
+- **CVD against independent implementations:** 810 simulations computed by colorspacious
+  1.1.2 (24 colors and 6 random ones, three anomalous types, nine severities including
+  in-between values) agree within 5e-13 per channel. 990 simulations by DaltonLens 0.1.5 at
+  the eleven published severities agree within one 8-bit step (DaltonLens computes in float32
+  and truncates), and both libraries' copies of Machado's table match the one here exactly.
 - **Hand-checked values:** black on white is exactly 21:1, #777777 on white 4.478:1 (fails
   AA), #767676 4.542:1 and #595959 7.005:1.
 - **Property tests** (fast-check): conversion round trips; gamut mapping always in gamut;
@@ -332,10 +368,10 @@ toolchain packages stay below their latest major; the reasons are in
   matters in dark themes. Passing it is necessary for conformance, not proof of
   readability. APCA, the method proposed for WCAG 3, addresses this; it is not implemented
   here because its reference code has restrictive licensing.
-- **CVD simulation is an approximation** of an average observer. It models full dichromacy
-  only (not the more common anomalous trichromacy), and the tritanopia model is the least
-  reliable. The "hard to tell apart" threshold (ΔE_OK 0.08) is a documented heuristic, not
-  a standard.
+- **CVD simulation is an approximation** of an average observer. Severity is the model's
+  parameter (how far one cone's sensitivity is shifted), not a clinical measurement, and the
+  tritan models are the least reliable. The "hard to tell apart" threshold (ΔE_OK 0.08) is a
+  documented heuristic, not a standard.
 - **Fixes change lightness only.** They keep the hue, but a slightly different hue or
   chroma might sometimes be closer. "Closest" assumes contrast changes monotonically along
   the search path; when it does not, the result still passes.
@@ -343,9 +379,8 @@ toolchain packages stay below their latest major; the reasons are in
 - **Not supported:** translucent backgrounds; translucent palette colors in audits;
   `lab()`, `lch()`, `hwb()`, `color()`, `none` and relative color syntax.
 - **Not yet done:** publishing to npm.
-- **Roadmap:** anomalous trichromacy (Machado's other severities), Display P3, GitHub
-  annotations or SARIF output for `audit`, and importers for Style Dictionary and Tokens
-  Studio files.
+- **Roadmap:** Display P3, GitHub annotations or SARIF output for `audit`, and importers
+  for Style Dictionary and Tokens Studio files.
 
 ## References
 
@@ -356,7 +391,9 @@ toolchain packages stay below their latest major; the reasons are in
 - Björn Ottosson, [A perceptual color space for image processing](https://bottosson.github.io/posts/oklab/)
   (2020).
 - G. M. Machado, M. M. Oliveira, L. A. F. Fernandes, "A Physiologically-based Model for
-  Simulation of Color Vision Deficiency", _IEEE TVCG_ 15(6), 2009.
+  Simulation of Color Vision Deficiency", _IEEE TVCG_ 15(6), 2009, and its
+  [supplementary matrices](https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html)
+  for severities 0.0 to 1.0.
 - IEC 61966-2-1:1999 (sRGB).
 
 ## License

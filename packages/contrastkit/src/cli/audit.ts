@@ -7,6 +7,7 @@ import {
   type RequirementResult,
 } from '../audit';
 import type { ContrastUse, WcagLevel } from '../contrast';
+import { formatCvdSimulation, type CvdKind } from '../cvd';
 import { formatRatio } from '../format';
 import { CliError, EXIT } from './errors';
 import {
@@ -14,6 +15,7 @@ import {
   json,
   parseCommandLine,
   parseLevel,
+  parseSimulations,
   verdict,
   type CommandContext,
 } from './shared';
@@ -38,14 +40,19 @@ export function runAudit(args: readonly string[], { io, style }: CommandContext)
     parseArgs({
       args: [...args],
       allowPositionals: true,
-      options: { require: { type: 'string' }, json: { type: 'boolean' } },
+      options: {
+        require: { type: 'string' },
+        cvd: { type: 'string', multiple: true },
+        json: { type: 'boolean' },
+      },
     }),
   );
   const [file = ''] = expectPositionals('audit', positionals, ['tokens.json']);
   const requiredLevel = parseLevel(values.require, '--require');
   const tokens = parseTokens(readJson(io.readFile, file));
 
-  const audit = auditPalette(tokens.colors);
+  const simulations = parseSimulations(values.cvd);
+  const audit = auditPalette(tokens.colors, simulations ? { cvdTypes: simulations } : {});
   const requirements: readonly PairRequirement[] =
     tokens.pairs.length > 0 || requiredLevel === undefined
       ? tokens.pairs
@@ -62,13 +69,17 @@ export function runAudit(args: readonly string[], { io, style }: CommandContext)
         pairs: audit.pairs,
         requirements: results,
         confusionThreshold: audit.confusionThreshold,
+        ...(simulations && { simulations }),
         cvdConfusions: audit.cvdConfusions,
         failures,
         pass: failures === 0,
       }),
     );
   } else {
-    io.stdout(renderAudit(style, file, audit, results, tokens.pairs.length > 0, requiredLevel));
+    const labels = simulations?.map(formatCvdSimulation);
+    io.stdout(
+      renderAudit(style, file, audit, results, tokens.pairs.length > 0, requiredLevel, labels),
+    );
   }
   return failures === 0 ? EXIT.ok : EXIT.failed;
 }
@@ -96,6 +107,7 @@ function renderAudit(
   results: readonly RequirementResult[],
   declaredPairs: boolean,
   requiredLevel: WcagLevel | undefined,
+  simulationLabels: readonly string[] | undefined,
 ): string {
   const lines = [style.bold(`Palette audit: ${file}`), `${audit.colors.length} colors`, ''];
 
@@ -149,12 +161,21 @@ function renderAudit(
   lines.push(
     style.bold(`Color vision warnings (ΔE_OK below ${audit.confusionThreshold} after simulation)`),
   );
+  const label = (confusion: { type: CvdKind; severity: number }) => formatCvdSimulation(confusion);
+  const labelWidth = Math.max(
+    12,
+    ...audit.cvdConfusions.map((confusion) => label(confusion).length),
+  );
   if (audit.cvdConfusions.length === 0) {
-    lines.push('  None: every pair stays distinguishable in all three simulations.');
+    lines.push(
+      simulationLabels === undefined
+        ? '  None: every pair stays distinguishable in all three simulations.'
+        : `  None: every pair stays distinguishable with ${simulationLabels.join(', ')}.`,
+    );
   } else {
     for (const confusion of audit.cvdConfusions) {
       lines.push(
-        `  ${style.warn('WARN')}  ${confusion.type.padEnd(12)}  ${confusion.a} / ${confusion.b}: ` +
+        `  ${style.warn('WARN')}  ${label(confusion).padEnd(labelWidth)}  ${confusion.a} / ${confusion.b}: ` +
           `ΔE_OK ${confusion.deltaE.toFixed(3)} (typical vision ${confusion.typicalDeltaE.toFixed(3)})`,
       );
     }

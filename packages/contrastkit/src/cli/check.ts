@@ -1,5 +1,7 @@
 import { parseArgs } from 'node:util';
 import { checkContrast, composite, type ContrastResult } from '../contrast';
+import { formatCvdSimulation, simulateCvd, type CvdSimulation } from '../cvd';
+import { deltaEOK } from '../difference';
 import { formatHex, formatRatio } from '../format';
 import { parseColor } from '../parse';
 import type { Rgb } from '../types';
@@ -10,6 +12,7 @@ import {
   expectPositionals,
   json,
   parseCommandLine,
+  parseSimulations,
   resolveTarget,
   verdict,
   type CommandContext,
@@ -27,6 +30,7 @@ export function runCheck(args: readonly string[], { io, style }: CommandContext)
         level: { type: 'string' },
         large: { type: 'boolean' },
         target: { type: 'string' },
+        cvd: { type: 'string', multiple: true },
         json: { type: 'boolean' },
       },
     }),
@@ -40,6 +44,9 @@ export function runCheck(args: readonly string[], { io, style }: CommandContext)
   const background = parseColor(colorArgument(backgroundArg));
   const result = checkContrast(foreground, background);
   const pass = result.ratio >= target.ratio;
+  const simulations = parseSimulations(values.cvd)?.map((simulation) =>
+    simulatePair(simulation, composite(foreground, background), background),
+  );
 
   if (values.json === true) {
     io.stdout(
@@ -56,13 +63,36 @@ export function runCheck(args: readonly string[], { io, style }: CommandContext)
           nonText: result.nonText,
         },
         target: { ratio: target.ratio, level: target.level, use: target.use },
+        ...(simulations && { simulations }),
         pass,
       }),
     );
   } else {
-    io.stdout(renderCheck(style, foreground, background, result, target, pass));
+    io.stdout(renderCheck(style, foreground, background, result, target, pass, simulations));
   }
   return pass ? EXIT.ok : EXIT.failed;
+}
+
+interface SimulatedPair extends CvdSimulation {
+  readonly foreground: string;
+  readonly background: string;
+  /** ΔE_OK between the simulated colors. */
+  readonly deltaE: number;
+  /** ΔE_OK between the actual colors. */
+  readonly typicalDeltaE: number;
+}
+
+/** The pair as simulated; a translucent foreground is simulated as the color it blends to. */
+function simulatePair(simulation: CvdSimulation, foreground: Rgb, background: Rgb): SimulatedPair {
+  const shownForeground = simulateCvd(foreground, simulation.type, simulation.severity);
+  const shownBackground = simulateCvd(background, simulation.type, simulation.severity);
+  return {
+    ...simulation,
+    foreground: formatHex(shownForeground),
+    background: formatHex(shownBackground),
+    deltaE: deltaEOK(shownForeground, shownBackground),
+    typicalDeltaE: deltaEOK(foreground, background),
+  };
 }
 
 const CRITERIA: readonly [keyof Omit<ContrastResult, 'ratio'>, string, string][] = [
@@ -80,6 +110,7 @@ function renderCheck(
   result: ContrastResult,
   target: Target,
   pass: boolean,
+  simulations: readonly SimulatedPair[] | undefined,
 ): string {
   const lines = [
     `${displayColor(foreground)} on ${formatHex(background)}: ${style.bold(formatRatio(result.ratio))}`,
@@ -96,6 +127,20 @@ function renderCheck(
     lines.push(`  ${verdict(style, result[key])}  ${label}needs ${needs}`);
   }
   lines.push('');
+  if (simulations !== undefined) {
+    lines.push('Color vision simulation (Machado et al. 2009; the checks use the actual colors)');
+    const width = Math.max(
+      ...simulations.map((simulation) => formatCvdSimulation(simulation).length),
+    );
+    for (const simulation of simulations) {
+      lines.push(
+        `  ${formatCvdSimulation(simulation).padEnd(width)}  ${simulation.foreground} on ` +
+          `${simulation.background}  ΔE_OK ${simulation.deltaE.toFixed(3)} ` +
+          `(typical vision ${simulation.typicalDeltaE.toFixed(3)})`,
+      );
+    }
+    lines.push('');
+  }
   lines.push(
     pass
       ? style.pass(`Passes ${target.description} (needs ${target.ratio}:1).`)

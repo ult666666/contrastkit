@@ -1,17 +1,20 @@
+import { formatCvdSimulation, parseCvdSimulation } from 'contrastkit';
 import {
+  DEFAULT_SEVERITY,
   DEFAULT_TARGET_ID,
   FIX_TARGETS,
   MAX_COLORS,
   MAX_NAME_LENGTH,
   MIN_COLORS,
-  SIMULATIONS,
+  isAnomalous,
   type SharedState,
   type Simulation,
 } from './state';
 
 /**
  * Serializes the shareable state into a URL hash, e.g.
- * `#c=Ink.1f2933&c=Paper.ffffff&fg=0&bg=1&sim=none&target=AA-text`.
+ * `#c=Ink.1f2933&c=Paper.ffffff&fg=0&bg=1&sim=none&target=AA-text`. An anomalous trichromacy
+ * carries its severity: `sim=deuteranomaly:0.6`.
  *
  * Each color is `name.hex`; names may contain dots because the hex never does, so
  * decoding splits at the last one. URLSearchParams takes care of escaping.
@@ -21,7 +24,11 @@ export function encodeHash(state: SharedState): string {
   for (const { name, hex } of state.colors) params.append('c', `${name}.${hex.replace('#', '')}`);
   params.set('fg', String(state.foreground));
   params.set('bg', String(state.background));
-  params.set('sim', state.simulation);
+  const { simulation, severity } = state;
+  params.set(
+    'sim',
+    isAnomalous(simulation) ? formatCvdSimulation({ type: simulation, severity }) : simulation,
+  );
   params.set('target', state.targetId);
   return `#${params.toString()}`;
 }
@@ -56,10 +63,20 @@ export function decodeHash(hash: string): SharedState | undefined | null {
   const background = index('bg', 1);
   if (foreground === null || background === null) return null;
 
-  const simulation = (params.get('sim') ?? 'none') as Simulation;
-  if (!SIMULATIONS.includes(simulation)) return null;
+  const sim = params.get('sim') ?? 'none';
+  let simulation: Simulation = 'none';
+  let severity = DEFAULT_SEVERITY;
+  if (sim !== 'none') {
+    try {
+      const parsed = parseCvdSimulation(sim);
+      simulation = parsed.type;
+      if (isAnomalous(parsed.type)) severity = parsed.severity;
+    } catch {
+      return null;
+    }
+  }
   const targetId = params.get('target') ?? DEFAULT_TARGET_ID;
   if (!FIX_TARGETS.some((target) => target.id === targetId)) return null;
 
-  return { colors, foreground, background, simulation, targetId };
+  return { colors, foreground, background, simulation, severity, targetId };
 }

@@ -95,6 +95,9 @@ describe('app state', () => {
     );
     expect(reducer(initial, { type: 'target', targetId: 'AAA-text' }).targetId).toBe('AAA-text');
     expect(reducer(selected, { type: 'load', shared: DEFAULT_SHARED_STATE })).toEqual(initial);
+    expect(reducer(initial, { type: 'severity', severity: 0.25 }).severity).toBe(0.25);
+    expect(reducer(initial, { type: 'severity', severity: 1.5 }).severity).toBe(1);
+    expect(reducer(initial, { type: 'severity', severity: -1 }).severity).toBe(0);
   });
 
   it('validates names', () => {

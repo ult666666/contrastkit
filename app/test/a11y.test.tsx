@@ -47,6 +47,14 @@ describe('accessibility (axe-core)', () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it('has no violations with the severity control on screen', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('radio', { name: /Tritanomaly/ }));
+    expect(screen.getByRole('slider', { name: 'Severity' })).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+  });
+
   it('reports color contrast as not checkable in jsdom (covered by the theme test)', async () => {
     render(<App />);
     const results = await axe.run(document, { runOnly: ['color-contrast'] });
