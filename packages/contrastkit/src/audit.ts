@@ -7,7 +7,14 @@ import {
   type WcagLevel,
 } from './contrast';
 import { oklabDistance, rgbToOklab } from './convert';
-import { CVD_TYPES, simulateCvd, type CvdType } from './cvd';
+import {
+  CVD_TYPES,
+  cvdMatrix,
+  simulateCvd,
+  type CvdKind,
+  type CvdSimulation,
+  type CvdType,
+} from './cvd';
 import { ColorParseError, InvalidArgumentError } from './errors';
 import { formatHex } from './format';
 import { toRgb } from './parse';
@@ -34,8 +41,12 @@ export type PaletteInput = readonly PaletteEntry[] | Readonly<Record<string, Col
 export interface AuditOptions {
   /** ΔE_OK below which colors count as hard to distinguish. Default 0.08. */
   readonly confusionThreshold?: number;
-  /** Which deficiencies to simulate. Default: all three. */
-  readonly cvdTypes?: readonly CvdType[];
+  /**
+   * Which deficiencies to simulate: dichromacy names, or `{ type, severity }` for anomalous
+   * trichromacy, such as `{ type: 'deuteranomaly', severity: 0.6 }`. Default: the three
+   * dichromacies.
+   */
+  readonly cvdTypes?: readonly (CvdType | CvdSimulation)[];
 }
 
 export interface AuditedColor {
@@ -55,7 +66,9 @@ export interface PairReport extends ContrastChecks {
 
 /** Two colors that are distinct in typical vision but hard to tell apart under a CVD. */
 export interface CvdConfusion {
-  readonly type: CvdType;
+  readonly type: CvdKind;
+  /** The simulation's severity: 1 for the dichromacies. */
+  readonly severity: number;
   readonly a: string;
   readonly b: string;
   /** ΔE_OK between the simulated colors (below the threshold). */
@@ -138,13 +151,22 @@ export function auditPalette(palette: PaletteInput, options: AuditOptions = {}):
     };
   });
 
+  const simulations = (options.cvdTypes ?? CVD_TYPES).map((entry): CvdSimulation => {
+    const simulation = typeof entry === 'string' ? { type: entry, severity: 1 } : entry;
+    cvdMatrix(simulation.type, simulation.severity);
+    return { type: simulation.type, severity: simulation.severity };
+  });
   const cvdConfusions: CvdConfusion[] = [];
-  for (const type of options.cvdTypes ?? CVD_TYPES) {
-    for (const [a, b] of unorderedPairs(colors)) {
+  for (const { type, severity } of simulations) {
+    const shown = colors.map((entry) => ({
+      ...entry,
+      simulated: simulateCvd(entry.color, type, severity),
+    }));
+    for (const [a, b] of unorderedPairs(shown)) {
       const typicalDeltaE = distance(a.color, b.color);
-      const deltaE = distance(simulateCvd(a.color, type), simulateCvd(b.color, type));
+      const deltaE = distance(a.simulated, b.simulated);
       if (typicalDeltaE >= threshold && deltaE < threshold) {
-        cvdConfusions.push({ type, a: a.name, b: b.name, deltaE, typicalDeltaE });
+        cvdConfusions.push({ type, severity, a: a.name, b: b.name, deltaE, typicalDeltaE });
       }
     }
   }

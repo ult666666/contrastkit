@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Anomalous trichromacy: `simulateCvd(color, 'protanomaly' | 'deuteranomaly' | 'tritanomaly',
+severity)` with a severity from 0 to 1, using all of Machado, Oliveira & Fernandes's (2009)
+  published matrices (`ANOMALY_MATRICES`, severities 0.0 to 1.0 in steps of 0.1) and linear
+  interpolation between them (`cvdMatrix`). Severity 1 gives exactly the dichromacy.
+- `parseCvdSimulation` and `formatCvdSimulation` for the `deuteranomaly:0.6` text form.
+- `auditPalette` accepts `{ type, severity }` entries in `cvdTypes`, and each CVD confusion
+  reports its `severity`.
+- CLI `--cvd <simulation>` (repeatable) for `check`, which prints the simulated pair, and
+  `audit`, which looks for confusable pairs under the chosen simulations.
+- Palette Auditor: protanomaly, deuteranomaly and tritanomaly options with a keyboard-operable
+  severity slider; links store the severity (`sim=deuteranomaly:0.6`).
+- Differential tests against colorspacious 1.1.2 (810 simulations, within 5e-13 per channel)
+  and DaltonLens 0.1.5 (990 simulations at the published steps, within one 8-bit step), from a
+  committed fixture whose generator is documented in docs/DESIGN.md.
+
 ### Changed
 
 - Node 20 is no longer supported; it reached end-of-life in April 2026. The package needs

@@ -1,4 +1,6 @@
 import { requiredRatio, type ContrastUse, type WcagLevel } from '../contrast';
+import { parseCvdSimulation, type CvdSimulation } from '../cvd';
+import { InvalidArgumentError } from '../errors';
 import { formatHex, formatRgb } from '../format';
 import type { Rgb } from '../types';
 import { CliError } from './errors';
@@ -97,6 +99,20 @@ export function resolveTarget(values: {
  */
 export function colorArgument(value: string): string {
   return /^(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value) ? `#${value}` : value;
+}
+
+/** Reads repeated `--cvd` values such as `deuteranopia` or `deuteranomaly:0.6`. */
+export function parseSimulations(
+  values: readonly string[] | undefined,
+): CvdSimulation[] | undefined {
+  return values?.map((value) => {
+    try {
+      return parseCvdSimulation(value);
+    } catch (error) {
+      // parseCvdSimulation only throws InvalidArgumentError, with a specific reason.
+      throw new CliError(`--cvd: ${(error as InvalidArgumentError).message}`, true);
+    }
+  });
 }
 
 /** Hex for opaque colors; rgb() for translucent ones, which keeps alpha exact. */

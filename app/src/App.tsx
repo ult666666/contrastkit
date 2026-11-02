@@ -1,16 +1,24 @@
-import { auditPalette, contrastRatio, formatHex, formatRatio, simulateCvd } from 'contrastkit';
+import {
+  CVD_TYPES,
+  auditPalette,
+  contrastRatio,
+  formatHex,
+  formatRatio,
+  simulateCvd,
+} from 'contrastkit';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { ContrastMatrix } from './components/ContrastMatrix';
 import { PairPreview } from './components/PairPreview';
 import { PaletteEditor } from './components/PaletteEditor';
-import { SIMULATION_LABELS, VisionPanel } from './components/VisionPanel';
+import { describeSimulation, VisionPanel } from './components/VisionPanel';
 import {
   createColor,
   DEFAULT_SHARED_STATE,
   displayName,
   findTarget,
   fromShared,
+  isAnomalous,
   reducer,
   toShared,
   type PaletteColor,
@@ -64,15 +72,24 @@ export function App() {
     };
   }, []);
 
-  const { colors, simulation } = state;
-  // Ids are unique even while two names are the same, so the audit works on ids.
+  const { colors, simulation, severity } = state;
+  const anomaly = isAnomalous(simulation) ? simulation : undefined;
+  // Ids are unique even while two names are the same, so the audit works on ids. A selected
+  // anomalous trichromacy is audited at its severity, next to the three dichromacies.
   const audit = useMemo(
-    () => auditPalette(colors.map((color) => ({ name: color.id, color: color.hex }))),
-    [colors],
+    () =>
+      auditPalette(
+        colors.map((color) => ({ name: color.id, color: color.hex })),
+        anomaly === undefined ? {} : { cvdTypes: [...CVD_TYPES, { type: anomaly, severity }] },
+      ),
+    [colors, anomaly, severity],
   );
   const shown = useCallback(
-    (hex: string) => (simulation === 'none' ? hex : formatHex(simulateCvd(hex, simulation))),
-    [simulation],
+    (hex: string) =>
+      simulation === 'none'
+        ? hex
+        : formatHex(simulateCvd(hex, simulation, isAnomalous(simulation) ? severity : 1)),
+    [simulation, severity],
   );
   const byId = new Map(colors.map((color) => [color.id, color]));
   const colorById = (id: string): PaletteColor => byId.get(id) ?? fallbackColor(colors);
@@ -202,6 +219,7 @@ export function App() {
             />
             <VisionPanel
               simulation={simulation}
+              severity={severity}
               confusions={confusions}
               threshold={audit.confusionThreshold}
               nameOf={(id) => displayName(colorById(id))}
@@ -210,8 +228,11 @@ export function App() {
                 announce(
                   next === 'none'
                     ? 'Showing typical color vision.'
-                    : `Simulating ${SIMULATION_LABELS[next]}.`,
+                    : `Simulating ${describeSimulation(next, severity)}.`,
                 );
+              }}
+              onSeverity={(next: number) => {
+                dispatch({ type: 'severity', severity: next });
               }}
             />
           </div>
@@ -230,7 +251,9 @@ export function App() {
               foreground={foreground}
               background={background}
               shown={shown}
-              simulationLabel={simulation === 'none' ? undefined : SIMULATION_LABELS[simulation]}
+              simulationLabel={
+                simulation === 'none' ? undefined : describeSimulation(simulation, severity)
+              }
               target={target}
               onTargetChange={(targetId) => {
                 dispatch({ type: 'target', targetId });

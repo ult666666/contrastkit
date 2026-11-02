@@ -209,6 +209,43 @@ describe('Palette Auditor', () => {
     expect(status()).toHaveTextContent('Showing typical color vision.');
   });
 
+  it('simulates anomalous trichromacy at a chosen severity', async () => {
+    const { user } = renderApp();
+    const leafHeader = within(grid()).getByRole('columnheader', { name: 'Leaf' });
+    const swatch = leafHeader.querySelector<HTMLElement>('.swatch');
+    expect(screen.queryByRole('slider', { name: 'Severity' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: /Deuteranomaly/ }));
+    const slider = screen.getByRole('slider', { name: 'Severity' });
+    expect(slider).toHaveValue('0.6');
+    expect(slider).toHaveAccessibleDescription(/0 is typical vision and 1 is deuteranopia/);
+    expect(status()).toHaveTextContent(
+      'Simulating Deuteranomaly (weak green-sensitive cones), severity 0.60.',
+    );
+    expect(window.location.hash).toContain('sim=deuteranomaly%3A0.6');
+    const moderate = swatch?.style.background;
+
+    fireEvent.change(slider, { target: { value: '1' } });
+    expect(slider.parentElement).toHaveTextContent('1.00');
+    expect(window.location.hash).toContain('sim=deuteranomaly%3A1');
+    expect(swatch?.style.background).not.toBe(moderate);
+    const warnings = screen.getByRole('heading', { name: 'Hard to tell apart' }).nextElementSibling;
+    expect(warnings).toHaveTextContent('Leaf and Ember with deuteranomaly at severity 1.00');
+    expect(
+      screen.getByText(/Sample drawn as simulated for Deuteranomaly .* severity 1\.00/),
+    ).toBeInTheDocument();
+
+    // At severity 1 the swatches match deuteranopia exactly.
+    const complete = swatch?.style.background;
+    await user.click(screen.getByRole('radio', { name: /Deuteranopia/ }));
+    expect(swatch?.style.background).toBe(complete);
+    await user.click(screen.getByRole('radio', { name: /Deuteranomaly/ }));
+
+    fireEvent.change(screen.getByRole('slider', { name: 'Severity' }), { target: { value: '0' } });
+    expect(swatch?.style.background).toBe('rgb(47, 133, 90)');
+    expect(screen.getByText(/No pair drops below a color difference/)).toBeInTheDocument();
+  });
+
   it('says when no pair is confusable', async () => {
     const { user } = renderApp('#c=A.000000&c=B.ffffff');
     await user.click(screen.getByRole('radio', { name: /Protanopia/ }));
