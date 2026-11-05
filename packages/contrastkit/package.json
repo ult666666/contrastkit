@@ -1,6 +1,6 @@
 {
   "name": "contrastkit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Accessible color, measured: WCAG 2.2 contrast checks, perceptual (OKLCH) fixes for failing pairs, color-vision-deficiency simulation and palette audits.",
   "keywords": [
     "accessibility",

@@ -20,7 +20,7 @@ contrastkit is not on npm. Install the library and the `contrastkit` command fro
 release, which also attaches a SHA-256 checksum (Node 22 or newer):
 
 ```sh
-npm install https://github.com/ult666666/contrastkit/releases/download/v0.1.0/contrastkit-0.1.0.tgz
+npm install https://github.com/ult666666/contrastkit/releases/download/v0.2.0/contrastkit-0.2.0.tgz
 npx contrastkit check 777 fff
 ```
 
