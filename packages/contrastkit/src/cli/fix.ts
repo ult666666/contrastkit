@@ -82,7 +82,7 @@ function renderFix(
     case 'unachievable':
       lines.push(
         style.fail(
-          `No lightness of this color reaches ${target.ratio}:1 on ${formatHex(background)}; ` +
+          `No lightness reaches ${target.ratio}:1 in every output format on ${formatHex(background)}; ` +
             `the best possible is ${formatRatio(result.maxRatio)}.`,
         ),
         foreground.alpha < 1

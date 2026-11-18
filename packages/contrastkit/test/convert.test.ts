@@ -192,6 +192,19 @@ describe('HSL', () => {
     });
   });
 
+  it.each([
+    { r: 0, g: Number.MIN_VALUE, b: 0, alpha: 0.5 },
+    { r: 1, g: 1 - Number.EPSILON / 2, b: 1, alpha: 1 },
+  ])('keeps saturation finite when the midpoint rounds to black or white', (color) => {
+    const hsl = rgbToHsl(color);
+    expect(hsl.s).toBe(1);
+    const back = hslToRgb(hsl);
+    expect(back.alpha).toBe(color.alpha);
+    expect(back.r).toBeCloseTo(color.r, 14);
+    expect(back.g).toBeCloseTo(color.g, 14);
+    expect(back.b).toBeCloseTo(color.b, 14);
+  });
+
   it('round-trips sRGB → HSL → sRGB', () => {
     fc.assert(
       fc.property(opaqueRgb, (color) => {

@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Check each suggested color at its original opacity, at the nearest hex alpha byte and
+  in its printed OKLCH notation. The `hexRatio` field gives the contrast of the pasted hex.
+  CSS color formatters now preserve opacity values with more than three decimal places.
+
 ## [0.2.0] - 2026-11-05
 
 ### Added
