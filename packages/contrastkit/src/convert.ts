@@ -162,8 +162,9 @@ export function rgbToHsl({ r, g, b, alpha }: Rgb): Hsl {
   const range = max - min;
   if (range === 0) return { h: 0, s: 0, l, alpha };
 
-  // With range > 0 and channels in [0, 1], l is strictly between 0 and 1.
-  const s = (max - l) / Math.min(l, 1 - l);
+  // The midpoint can round to 0 or 1 even when the channels differ.
+  // Use the channel sum (or its complement) before rounding the midpoint.
+  const s = range / (l <= 0.5 ? max + min : 1 - max + (1 - min));
   let sector: number;
   if (max === r) sector = (g - b) / range + (g < b ? 6 : 0);
   else if (max === g) sector = (b - r) / range + 2;
