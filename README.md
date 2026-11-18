@@ -16,15 +16,27 @@ reopens it.
 
 ## Install
 
-contrastkit is not on npm. Install the library and the `contrastkit` command from the GitHub
-release, which also attaches a SHA-256 checksum (Node 22 or newer):
+Build the current library and CLI from the repository with Node 24.15 or later on the 24.x
+line. The root [package.json](package.json) lists the other supported Node versions.
 
 ```sh
-npm install https://github.com/ult666666/contrastkit/releases/download/v0.2.0/contrastkit-0.2.0.tgz
-npx contrastkit check 777 fff
+git clone https://github.com/ult666666/contrastkit.git
+cd contrastkit
+npm ci
+npm run build --workspace=contrastkit
+npm pack --workspace=contrastkit
 ```
 
-To build from source, clone the repository and run `npm ci && npm run build`.
+The following commands run in an application directory next to the checkout. They install
+the generated archive and check dark gray text on white.
+
+```sh
+npm install ../contrastkit/contrastkit-0.2.0.tgz
+npx contrastkit check 333 fff
+```
+
+The [v0.1.0 release](https://github.com/ult666666/contrastkit/releases/tag/v0.1.0) includes
+the prebuilt package and checksum for that version.
 
 ## Library
 
