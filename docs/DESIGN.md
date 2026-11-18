@@ -119,7 +119,7 @@ AAA version, so the AAA target for `non-text` stays 3:1.
 
 `suggestFix(foreground, background, { target | level, use })` changes only the
 foreground's OKLCH lightness. It keeps the hue, keeps chroma where sRGB allows it, and keeps
-alpha exactly. Lightness is the perceptual dimension that drives luminance, so the smallest
+the input alpha in its RGB result. Hex encodes opacity as a byte. Lightness is the perceptual dimension that drives luminance, so the smallest
 lightness change that passes is usually the least visible fix.
 
 1. If the pair already passes, return `{ status: 'passes' }`.
@@ -129,13 +129,16 @@ lightness change that passes is usually the least visible fix.
      fixed alpha is monotonic in each channel, so this holds for translucent colors too).
    - Otherwise binary-search L between the original (fails) and the end (passes) until
      the interval is below 1e-5, about 17 steps. Each probe is gamut-mapped, then rounded
-     to 8-bit, so the returned color is exactly what its hex code produces. The invariant
-     "the upper bound passes" means the returned color has been measured to pass.
+     to 8-bit RGB channels. Measure the RGB result at its exact alpha, its hex at the nearest
+     alpha byte, and its formatted OKLCH after parsing. A probe passes when all three clear
+     the target. For example, black at 53.5% on white clears 4.5:1 in CSS, but the nearest
+     hex is `#00000088` at 4.478:1. Even the darkest endpoint fails that hex target.
 3. If neither direction works, return `{ status: 'unachievable', maxRatio }`. Otherwise
-   return the candidates sorted by ΔE_OK from the original, closest first.
+   return the candidates sorted by ΔE_OK from the original, closest first. `maxRatio` is
+   the best endpoint's lowest ratio across formats.
 
-Cost: at most 2 × 18 probes, each a gamut map (≤ ~14 chroma steps) plus a contrast
-computation, so microseconds per pair.
+The search needs at most two directions and about 18 probes per direction at the default
+precision. Each probe includes gamut mapping and contrast checks for the output formats.
 
 The bisection assumes contrast changes monotonically along each direction. That is true in
 the common case (the fail/pass predicate flips once, even when the path crosses the
@@ -143,11 +146,10 @@ background's luminance) but not guaranteed for every gamut-mapped path. When it 
 result still passes but may not be the very closest passing color. The property tests
 check what is guaranteed:
 
-- every candidate meets the target, including its hex code re-parsed;
+- every candidate meets the target after its hex or compact OKLCH is re-parsed;
 - every candidate is in gamut with 8-bit channels;
 - candidates are sorted by ΔE_OK;
-- `unachievable` is returned **exactly** when neither black nor white reaches the target
-  (500 random cases per property).
+- `unachievable` is returned **exactly** when neither black nor white reaches the target across all output formats.
 
 ## 5. Color-vision-deficiency simulation
 

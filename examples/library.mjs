@@ -15,7 +15,7 @@ const fix = suggestFix('#777777', '#ffffff', { level: 'AA' });
 if (fix.status === 'fixed') {
   const [best] = fix.candidates;
   console.log(
-    `closest AA fix: ${best.hex} (${formatRatio(best.ratio)}, ΔE_OK ${best.deltaE.toFixed(3)})`,
+    `closest AA fix: ${best.hex} (${formatRatio(best.hexRatio)}, ΔE_OK ${best.deltaE.toFixed(3)})`,
   );
 }
 

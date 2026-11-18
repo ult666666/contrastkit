@@ -13,7 +13,7 @@ function byte(value: number): number {
 }
 
 function alphaSuffix(alpha: number): string {
-  return alpha < 1 ? ` / ${trimmed(clamp(alpha, 0, 1), 3)}` : '';
+  return alpha < 1 ? ` / ${clamp(alpha, 0, 1)}` : '';
 }
 
 /**

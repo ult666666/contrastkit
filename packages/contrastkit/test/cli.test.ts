@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { version } from '../package.json';
 import { run } from '../src/cli/run';
-import { composite } from '../src/contrast';
+import { composite, contrastRatio } from '../src/contrast';
 import { simulateCvd } from '../src/cvd';
 import { deltaEOK } from '../src/difference';
 import { formatHex } from '../src/format';
@@ -117,6 +117,25 @@ describe('contrastkit fix', () => {
   it('keeps alpha exact by printing translucent suggestions as rgb()', () => {
     const { stdout } = cli(['fix', 'rgb(0 0 255 / 0.8)', 'white', '--level', 'AAA']);
     expect(stdout).toMatch(/Closest fix: rgb\(\d+ \d+ \d+ \/ 0\.8\)/);
+  });
+
+  it.each([
+    ['rgb(255 153 102 / 0.5403)', 'white', 4.5],
+    ['#7cfed1', '#87228b', 7],
+  ] as const)('prints passing CSS, hex and OKLCH for %s on %s', (fg, bg, target) => {
+    const result = cli(['fix', fg, bg, '--target', String(target), '--json']);
+    expect(result.code).toBe(0);
+    const { candidates } = JSON.parse(result.stdout) as {
+      candidates: { css: string; hex: string; oklch: string; ratio: number; hexRatio: number }[];
+    };
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const candidate of candidates) {
+      expect(contrastRatio(candidate.css, bg)).toBe(candidate.ratio);
+      expect(contrastRatio(candidate.hex, bg)).toBe(candidate.hexRatio);
+      for (const color of [candidate.css, candidate.hex, candidate.oklch]) {
+        expect(contrastRatio(color, bg)).toBeGreaterThanOrEqual(target);
+      }
+    }
   });
 
   it('prints JSON with --json', () => {

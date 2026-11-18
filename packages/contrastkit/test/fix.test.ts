@@ -4,6 +4,7 @@ import { contrastRatio } from '../src/contrast';
 import { rgbToOklch } from '../src/convert';
 import { InvalidArgumentError } from '../src/errors';
 import { suggestFix } from '../src/fix';
+import { formatHex, formatOklch, formatRgb } from '../src/format';
 import { parseColor } from '../src/parse';
 import { byte, opaqueRgb8, unitInterval } from './arbitraries';
 
@@ -72,6 +73,28 @@ describe('suggestFix', () => {
     if (result.status === 'fixed') expect(result.candidates[0].color.alpha).toBe(0.8);
   });
 
+  it('checks the alpha byte in a pasted hex fix as well as the exact CSS alpha', () => {
+    const result = suggestFix('rgb(255 153 102 / 0.5412)', 'white');
+    // The previous fix passed at full opacity precision, but pasted as 4.49966:1.
+    expect(contrastRatio('#0e00008a', 'white')).toBeLessThan(4.5);
+    expect(result.status).toBe('fixed');
+    if (result.status !== 'fixed') return;
+    for (const candidate of result.candidates) {
+      expect(candidate.color.alpha).toBe(0.5412);
+      expect(candidate.hexRatio).toBe(contrastRatio(candidate.hex, 'white'));
+      expect(candidate.hexRatio).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(formatRgb(candidate.color), 'white')).toBe(candidate.ratio);
+    }
+  });
+
+  it('reports the achievable limit when exact-alpha black passes but its hex byte fails', () => {
+    expect(contrastRatio('rgb(0 0 0 / 0.535)', 'white')).toBeGreaterThan(4.5);
+    expect(suggestFix('rgb(255 153 102 / 0.535)', 'white')).toMatchObject({
+      status: 'unachievable',
+      maxRatio: contrastRatio('#00000088', 'white'),
+    });
+  });
+
   it('validates its inputs', () => {
     expect(() => suggestFix('#000', '#fff', { target: 22 })).toThrow(InvalidArgumentError);
     expect(() => suggestFix('#000', '#fff', { target: 0.5 })).toThrow(/from 1 to 21, got 0.5/);
@@ -94,6 +117,7 @@ describe('suggestFix', () => {
             // The hex code alone must pass too: it is what people will paste.
             expect(contrastRatio(candidate.hex, background)).toBeGreaterThanOrEqual(goal);
             expect(parseColor(candidate.hex)).toEqual(candidate.color);
+            expect(candidate.hexRatio).toBe(candidate.ratio);
             for (const channel of [candidate.color.r, candidate.color.g, candidate.color.b]) {
               expect(channel).toBeGreaterThanOrEqual(0);
               expect(channel).toBeLessThanOrEqual(1);
@@ -128,16 +152,25 @@ describe('suggestFix', () => {
             for (const candidate of result.candidates) {
               expect(candidate.color.alpha).toBe(foreground.alpha);
               expect(contrastRatio(candidate.color, background)).toBeGreaterThanOrEqual(goal);
+              expect(contrastRatio(candidate.hex, background)).toBe(candidate.hexRatio);
+              expect(candidate.hexRatio).toBeGreaterThanOrEqual(goal);
+              expect(
+                contrastRatio(formatOklch(candidate.color), background),
+              ).toBeGreaterThanOrEqual(goal);
             }
           }
           if (result.status === 'unachievable') {
             const atAlpha = (base: typeof BLACK) => ({ ...base, alpha: foreground.alpha });
-            expect(
-              Math.max(
-                contrastRatio(atAlpha(BLACK), background),
-                contrastRatio(atAlpha(WHITE), background),
-              ),
-            ).toBeLessThan(goal);
+            const endpointRatios = [BLACK, WHITE].map((base) => {
+              const exact = atAlpha(base);
+              return Math.min(
+                contrastRatio(exact, background),
+                contrastRatio(formatHex(exact), background),
+                contrastRatio(formatOklch(exact), background),
+              );
+            });
+            expect(result.maxRatio).toBe(Math.max(...endpointRatios));
+            expect(result.maxRatio).toBeLessThan(goal);
           }
         }),
       );

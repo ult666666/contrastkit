@@ -38,6 +38,15 @@ describe('formatRgb, formatHsl and formatOklch', () => {
     expect(formatOklch(translucent)).toBe('oklch(62.8% 0.2577 29.23 / 0.25)');
   });
 
+  it('preserve the opacity of a CSS color without rounding it to three decimals', () => {
+    for (const alpha of [0.5403, 0.99999999, 0.0000001, 127 / 255]) {
+      const color = { r: 0, g: 0, b: 0, alpha };
+      for (const format of [formatRgb, formatHsl, formatOklch]) {
+        expect(parseColor(format(color)).alpha).toBe(alpha);
+      }
+    }
+  });
+
   it('give neutral colors hue 0 in oklch()', () => {
     expect(formatOklch(parseColor('#808080'))).toBe('oklch(59.99% 0 0)');
   });

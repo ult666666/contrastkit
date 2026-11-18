@@ -138,7 +138,7 @@ export function PairPreview({
                 aria-hidden="true"
               />
               <span className="fix-details">
-                <strong>{candidate.hex}</strong> · {formatRatio(candidate.ratio)} ·{' '}
+                <strong>{candidate.hex}</strong> · {formatRatio(candidate.hexRatio)} ·{' '}
                 {index === 0 ? 'closest' : candidate.direction}, ΔE<sub>OK</sub>{' '}
                 {candidate.deltaE.toFixed(3)}
               </span>

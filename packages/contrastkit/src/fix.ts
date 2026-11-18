@@ -2,7 +2,7 @@ import { contrastRatio, MAX_CONTRAST_RATIO, requiredRatio } from './contrast';
 import type { ContrastUse, WcagLevel } from './contrast';
 import { oklabDistance, rgbToOklab, rgbToOklch } from './convert';
 import { InvalidArgumentError } from './errors';
-import { formatHex } from './format';
+import { formatHex, formatOklch } from './format';
 import { gamutMapOklch, quantizeRgb } from './gamut';
 import { toRgb } from './parse';
 import type { ColorInput, Rgb } from './types';
@@ -19,9 +19,12 @@ export interface FixOptions {
 
 /** One suggested replacement for the foreground. */
 export interface FixCandidate {
-  /** The new foreground: 8-bit channels (exactly what `hex` says) and the original alpha. */
+  /** The new foreground: 8-bit RGB channels and the exact input alpha. */
   readonly color: Rgb;
+  /** The same RGB channels with alpha rounded to the nearest byte. */
   readonly hex: string;
+  /** Contrast of `hex` on the supplied background, including its quantized alpha. */
+  readonly hexRatio: number;
   /** Contrast of the new foreground against the background; always at least the target. */
   readonly ratio: number;
   /** ΔE_OK between the original and the new foreground: how visible the change is. */
@@ -46,11 +49,11 @@ export type FixResult =
       readonly candidates: readonly [FixCandidate, ...FixCandidate[]];
     }
   | {
-      /** No color with this hue, chroma and alpha reaches the target on this background. */
+      /** No lightness reaches the target across the returned color formats. */
       readonly status: 'unachievable';
       readonly target: number;
       readonly ratio: number;
-      /** The best ratio any lightness can reach (black or white at the original alpha). */
+      /** The best ratio achievable in all formats, at the black or white endpoint. */
       readonly maxRatio: number;
     };
 
@@ -72,8 +75,8 @@ const MAX_SEARCH_STEPS = 40;
  *    direction can, since those two have the lowest and highest possible luminance.
  * 2. Otherwise binary-search the lightness between the original (fails) and the end
  *    (passes). Every probe is gamut-mapped and rounded to 8-bit, so the color returned is
- *    exactly what its hex code produces, and the invariant "upper bound passes" means
- *    the returned color has been measured to pass.
+ *    checked at the original alpha, the alpha its hex code encodes, and the precision
+ *    of the displayed OKLCH value. The passing end of the interval remains a valid fix.
  * 3. Rank the passing candidates by ΔE_OK from the original foreground.
  *
  * The bisection assumes contrast changes monotonically along each direction, which holds
@@ -99,7 +102,16 @@ export function suggestFix(
   const originLab = rgbToOklab(front);
   const colorAt = (lightness: number): Rgb =>
     quantizeRgb(gamutMapOklch({ ...origin, l: lightness }));
-  const passes = (lightness: number): boolean => contrastRatio(colorAt(lightness), back) >= target;
+  // RGB bytes survive serialization exactly. Hex also rounds opacity to a byte,
+  // and the CLI's compact OKLCH notation rounds lightness, chroma and hue.
+  const hexAlpha = toRgb(formatHex(front)).alpha;
+  const hexRatio = (color: Rgb): number => contrastRatio({ ...color, alpha: hexAlpha }, back);
+  const minimumRatio = (color: Rgb): number => {
+    const ratio = contrastRatio(color, back);
+    const inHex = hexAlpha === front.alpha ? ratio : hexRatio(color);
+    return Math.min(ratio, inHex, contrastRatio(formatOklch(color), back));
+  };
+  const passes = (lightness: number): boolean => minimumRatio(colorAt(lightness)) >= target;
 
   const search = (end: 0 | 1): FixCandidate | undefined => {
     if (!passes(end)) return undefined;
@@ -115,6 +127,7 @@ export function suggestFix(
     return {
       color,
       hex: formatHex(color),
+      hexRatio: hexRatio(color),
       ratio: contrastRatio(color, back),
       deltaE: oklabDistance(originLab, rgbToOklab(color)),
       direction: end === 0 ? 'darker' : 'lighter',
@@ -124,7 +137,7 @@ export function suggestFix(
   const found = [search(0), search(1)].filter((candidate) => candidate !== undefined);
   const [best, ...others] = found.sort((a, b) => a.deltaE - b.deltaE);
   if (best === undefined) {
-    const maxRatio = Math.max(contrastRatio(colorAt(0), back), contrastRatio(colorAt(1), back));
+    const maxRatio = Math.max(minimumRatio(colorAt(0)), minimumRatio(colorAt(1)));
     return { status: 'unachievable', target, ratio, maxRatio };
   }
   return { status: 'fixed', target, ratio, candidates: [best, ...others] };

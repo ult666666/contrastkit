@@ -47,7 +47,7 @@ const fix = suggestFix('#777777', '#ffffff', { level: 'AA' });
 if (fix.status === 'fixed') {
   const [best] = fix.candidates;
   console.log(
-    `closest AA fix: ${best.hex} (${formatRatio(best.ratio)}, ΔE_OK ${best.deltaE.toFixed(3)})`,
+    `closest AA fix: ${best.hex} (${formatRatio(best.hexRatio)}, ΔE_OK ${best.deltaE.toFixed(3)})`,
   );
 }
 
@@ -175,8 +175,10 @@ Auditor goes through the same audit.
 Contrast is `(L1 + 0.05) / (L2 + 0.05)` on WCAG relative luminance. It linearizes sRGB at the
 standard's 0.04045 threshold, where WCAG 2.0 printed 0.03928; for 8-bit colors the two give the
 same result, which the tests check for every channel value. A fix is a binary search on OKLCH
-lightness towards black and towards white. Every probe is gamut-mapped and rounded to 8 bits, so
-the hex that comes back is the color that was measured to pass. Color vision deficiencies are
+lightness towards black and towards white. A suggestion must pass as RGB at the original
+opacity, as hex with an 8-bit alpha channel, and in the compact OKLCH notation printed by the
+CLI. For translucent input, `ratio` measures the exact-alpha RGB value and `hexRatio` measures
+the hex a user can paste. Color vision deficiencies are
 simulated with Machado, Oliveira and Fernandes's (2009) matrices in linear RGB, interpolated
 linearly between their published 0.1 severity steps.
 
